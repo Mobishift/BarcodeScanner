@@ -48,7 +48,7 @@
 - (NSString*)isScanNotPossible;
 - (void)scan:(CDVInvokedUrlCommand*)command;
 - (void)encode:(CDVInvokedUrlCommand*)command;
-- (void)returnSuccess:(NSString*)scannedText format:(NSString*)format cancelled:(BOOL)cancelled flipped:(BOOL)flipped callback:(NSString*)callback;
+- (void)returnSuccess:(NSString*)scannedText host:(NSString*)host parkinglotId:(NSString*)parkinglotId format:(NSString*)format cancelled:(BOOL)cancelled flipped:(BOOL)flipped callback:(NSString*)callback;
 - (void)returnError:(NSString*)message callback:(NSString*)callback;
 @end
 
@@ -66,11 +66,14 @@
 @property (nonatomic)         BOOL                        is1D;
 @property (nonatomic)         BOOL                        is2D;
 @property (nonatomic)         BOOL                        capturing;
+@property (nonatomic, retain) NSString*                   resText;
+@property (nonatomic, retain) NSString*                   host;
+@property (nonatomic, retain) NSString*                   parkinglotId;
 @property (nonatomic)         BOOL                        isFrontCamera;
 @property (nonatomic)         BOOL                        isFlipped;
 
 
-- (id)initWithPlugin:(CDVBarcodeScanner*)plugin callback:(NSString*)callback parentViewController:(UIViewController*)parentViewController alterateOverlayXib:(NSString *)alternateXib;
+- (id)initWithPlugin:(CDVBarcodeScanner*)plugin callback:(NSString*)callback host:(NSString*)host parkinglotId:(NSString*)parkinglotId parentViewController:(UIViewController*)parentViewController alterateOverlayXib:(NSString *)alternateXib;
 - (void)scanBarcode;
 - (void)barcodeScanSucceeded:(NSString*)text format:(NSString*)format;
 - (void)barcodeScanFailed:(NSString*)message;
@@ -128,14 +131,18 @@
     NSString*       callback;
     NSString*       capabilityError;
     
+    NSMutableDictionary* options = [command.arguments objectAtIndex:0];
+    NSString* host = [options objectForKey:@"host"];
+    NSString* parkinglotId = [options objectForKey:@"parkinglotId"];
+    
     callback = command.callbackId;
     
     // We allow the user to define an alternate xib file for loading the overlay. 
     NSString *overlayXib = nil;
-    if ( [command.arguments count] >= 1 )
-    {
-        overlayXib = [command.arguments objectAtIndex:0];
-    }
+//    if ( [command.arguments count] >= 1 )
+//    {
+//        overlayXib = [command.arguments objectAtIndex:0];
+//    }
     
     capabilityError = [self isScanNotPossible];
     if (capabilityError) {
@@ -146,6 +153,8 @@
     processor = [[CDVbcsProcessor alloc]
                  initWithPlugin:self
                  callback:callback
+                 host:host
+                 parkinglotId:parkinglotId
                  parentViewController:self.viewController
                  alterateOverlayXib:overlayXib
                  ];
@@ -162,22 +171,21 @@
 }
 
 //--------------------------------------------------------------------------
-- (void)returnSuccess:(NSString*)scannedText format:(NSString*)format cancelled:(BOOL)cancelled flipped:(BOOL)flipped callback:(NSString*)callback{
-    NSNumber* cancelledNumber = [NSNumber numberWithInt:(cancelled?1:0)];
-    
-    NSMutableDictionary* resultDict = [[[NSMutableDictionary alloc] init] autorelease];
-    [resultDict setObject:scannedText     forKey:@"text"];
-    [resultDict setObject:format          forKey:@"format"];
-    [resultDict setObject:cancelledNumber forKey:@"cancelled"];
-    
-    CDVPluginResult* result = [CDVPluginResult
-                               resultWithStatus: CDVCommandStatus_OK
-                               messageAsDictionary: resultDict
-                               ];
-    
-    NSString* js = [result toSuccessCallbackString:callback];
-    if (!flipped) {
-        [self writeJavascript:js];
+- (void)returnSuccess:(NSString*)scannedText host:(NSString *)host parkinglotId:(NSString *)parkinglotId format:(NSString *)format cancelled:(BOOL)cancelled flipped:(BOOL)flipped callback:(NSString *)callback{
+    if (!cancelled){
+        NSArray *scannedTextArray = [scannedText componentsSeparatedByString:@"parkinglotcouponuser="];
+        if ([scannedTextArray count] == 2) {
+            NSString *res = [scannedTextArray objectAtIndex: 1];
+            NSArray *resArray = [res componentsSeparatedByString:@"__"];
+            if ([resArray count] == 2) {
+                NSString *parkinglotcouponuserPk = [resArray objectAtIndex:0];
+                NSString *code = [resArray objectAtIndex:1];
+                UIAlertView *someError = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: code delegate: self cancelButtonTitle: @"Ok" otherButtonTitles: nil];
+                
+                [someError show];
+                [someError release];
+            }
+        }
     }
 }
 
@@ -210,10 +218,15 @@
 @synthesize is1D                 = _is1D;
 @synthesize is2D                 = _is2D;
 @synthesize capturing            = _capturing;
+@synthesize resText              = _resText;
+@synthesize host                 = _host;
+@synthesize parkinglotId         = _parkinglotId;
 
 //--------------------------------------------------------------------------
 - (id)initWithPlugin:(CDVBarcodeScanner*)plugin
             callback:(NSString*)callback
+                host:(NSString*)host
+        parkinglotId:(NSString*)parkinglotId
 parentViewController:(UIViewController*)parentViewController
   alterateOverlayXib:(NSString *)alternateXib {
     self = [super init];
@@ -221,12 +234,15 @@ parentViewController:(UIViewController*)parentViewController
     
     self.plugin               = plugin;
     self.callback             = callback;
+    self.host                 = host;
+    self.parkinglotId         = parkinglotId;
     self.parentViewController = parentViewController;
     self.alternateXib         = alternateXib;
     
     self.is1D      = YES;
     self.is2D      = YES;
     self.capturing = NO;
+    self.resText = @"";
     
     return self;
 }
@@ -235,6 +251,8 @@ parentViewController:(UIViewController*)parentViewController
 - (void)dealloc {
     self.plugin = nil;
     self.callback = nil;
+    self.host = nil;
+    self.parkinglotId = nil;
     self.parentViewController = nil;
     self.viewController = nil;
     self.captureSession = nil;
@@ -242,6 +260,7 @@ parentViewController:(UIViewController*)parentViewController
     self.alternateXib = nil;
     
     self.capturing = NO;
+    self.resText = @"";
     
     [super dealloc];
 }
@@ -289,8 +308,11 @@ parentViewController:(UIViewController*)parentViewController
 
 //--------------------------------------------------------------------------
 - (void)barcodeScanSucceeded:(NSString*)text format:(NSString*)format {
-    [self barcodeScanDone];
-    [self.plugin returnSuccess:text format:format cancelled:FALSE flipped:FALSE callback:self.callback];
+//     [self barcodeScanDone];
+    if (![self.resText isEqualToString:text]) {
+        self.resText = text;
+        [self.plugin returnSuccess:text host:self.host parkinglotId:self.parkinglotId format:format cancelled:FALSE flipped:FALSE callback:self.callback];
+    }
 }
 
 //--------------------------------------------------------------------------
@@ -302,7 +324,7 @@ parentViewController:(UIViewController*)parentViewController
 //--------------------------------------------------------------------------
 - (void)barcodeScanCancelled {
     [self barcodeScanDone];
-    [self.plugin returnSuccess:@"" format:@"" cancelled:TRUE flipped:self.isFlipped callback:self.callback];
+    [self.plugin returnSuccess:@"" host:self.host parkinglotId:self.parkinglotId format:@"" cancelled:TRUE flipped:self.isFlipped callback:self.callback];
     if (self.isFlipped) {
         self.isFlipped = NO;
     }
