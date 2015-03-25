@@ -105,7 +105,6 @@
             replace: <source-file src="$1" target-dir="$2"/>
         -->
         <!-- source-file -->
-        <source-file src="src/android/LibraryProject/src/com/google/zxing/client/android/CaptureActivity.java" target-dir="src/com/google/zxing/client/android"/>
         <source-file src="src/android/LibraryProject/res/drawable/launcher_icon.png" target-dir="res/drawable"/>
         <source-file src="src/android/LibraryProject/res/drawable/share_via_barcode.png" target-dir="res/drawable"/>
         <source-file src="src/android/LibraryProject/res/drawable/shopper_icon.png" target-dir="res/drawable"/>
