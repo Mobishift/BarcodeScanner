@@ -71,6 +71,9 @@
          * @param {Function} errorCallback
          */
         BarcodeScanner.prototype.scan = function (url, parkinglotId, successCallback, errorCallback) {
+            url = ""+url;
+            parkinglotId = ""+parkinglotId;
+            
             if (errorCallback == null) {
                 errorCallback = function () {
                 };
