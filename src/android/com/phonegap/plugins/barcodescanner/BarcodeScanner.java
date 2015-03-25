@@ -27,6 +27,8 @@ import org.apache.cordova.PluginResult;
  */
 public class BarcodeScanner extends CordovaPlugin {
     public static final int REQUEST_CODE = 0x0ba7c0de;
+    public static String HOST_URL = "";
+    public static String PARKINGLOT = "";
 
     private static final String SCAN = "scan";
     private static final String ENCODE = "encode";
@@ -89,14 +91,30 @@ public class BarcodeScanner extends CordovaPlugin {
                     callbackContext.error("User did not specify data to encode");
                     return true;
                 }
-
                 encode(type, data);
             } else {
                 callbackContext.error("User did not specify data to encode");
                 return true;
             }
         } else if (action.equals(SCAN)) {
-            scan();
+            JSONObject obj = args.optJSONObject(0);
+            if(obj != null){
+                String url = obj.optString("host");
+                String parkinglot = obj.optString("parkinglotId");
+                if(url == null){
+                    callbackContext.error("please input host url");
+                    return true;
+                }
+                if(parkinglot == null){
+                    callbackContext.error("please input parkinglot id");
+                    return true;
+                }
+                HOST_URL = url;
+                PARKINGLOT = parkinglot;
+                scan();
+            }else{
+                callbackContext.error("please input args");
+            }
         } else {
             return false;
         }
@@ -138,16 +156,16 @@ public class BarcodeScanner extends CordovaPlugin {
                 //this.success(new PluginResult(PluginResult.Status.OK, obj), this.callback);
                 this.callbackContext.success(obj);
             } else if (resultCode == Activity.RESULT_CANCELED) {
-                JSONObject obj = new JSONObject();
-                try {
-                    obj.put(TEXT, "");
-                    obj.put(FORMAT, "");
-                    obj.put(CANCELLED, true);
-                } catch (JSONException e) {
-                    Log.d(LOG_TAG, "This should never happen");
-                }
+//                JSONObject obj = new JSONObject();
+//                try {
+//                    obj.put(TEXT, "");
+//                    obj.put(FORMAT, "");
+//                    obj.put(CANCELLED, true);
+//                } catch (JSONException e) {
+//                    Log.d(LOG_TAG, "This should never happen");
+//                }
                 //this.success(new PluginResult(PluginResult.Status.OK, obj), this.callback);
-                this.callbackContext.success(obj);
+                this.callbackContext.error("cancel");
             } else {
                 //this.error(new PluginResult(PluginResult.Status.ERROR), this.callback);
                 this.callbackContext.error("Unexpected error");

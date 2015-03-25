@@ -63,7 +63,7 @@ public final class ViewfinderView extends View {
   public ViewfinderView(Context context, AttributeSet attrs) {
     super(context, attrs);
 
-	fakeR = new FakeR(context);
+  fakeR = new FakeR(context);
 
     // Initialize these once for performance rather than calling them every time in onDraw().
     paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -87,6 +87,7 @@ public final class ViewfinderView extends View {
       return; // not ready yet, early draw before done configuring
     }
     Rect frame = cameraManager.getFramingRect();
+    frame = new Rect(frame.top, frame.left, frame.bottom, frame.right);
     if (frame == null) {
       return;
     }

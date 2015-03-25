@@ -32,6 +32,8 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
+import android.widget.Toast;
+
 import com.google.zxing.FakeR;
 
 import java.util.Collection;
@@ -62,7 +64,7 @@ public final class CaptureActivityHandler extends Handler {
                          Collection<BarcodeFormat> decodeFormats,
                          String characterSet,
                          CameraManager cameraManager) {
-	fakeR = new FakeR(activity);
+  fakeR = new FakeR(activity);
     this.activity = activity;
     decodeThread = new DecodeThread(activity, decodeFormats, characterSet,
         new ViewfinderResultPointCallback(activity.getViewfinderView()));
@@ -93,8 +95,12 @@ public final class CaptureActivityHandler extends Handler {
         cameraManager.requestPreviewFrame(decodeThread.getHandler(), fakeR.getId("id", "decode"));
     } else if (message.what == fakeR.getId("id", "return_scan_result")) {
         Log.d(TAG, "Got return scan result message");
-        activity.setResult(Activity.RESULT_OK, (Intent) message.obj);
-        activity.finish();
+//        activity.setResult(Activity.RESULT_OK, (Intent) message.obj);
+        Intent intent = (Intent) message.obj;
+        
+        Toast.makeText(activity, intent.getStringExtra("SCAN_RESULT"), Toast.LENGTH_SHORT).show();
+        restartPreviewAndDecode();
+//        activity.finish();
     } else if (message.what == fakeR.getId("id", "launch_product_query")) {
         Log.d(TAG, "Got product query message");
         String url = (String) message.obj;

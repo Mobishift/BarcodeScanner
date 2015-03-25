@@ -140,7 +140,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
   public void onCreate(Bundle icicle) {
     super.onCreate(icicle);
 
-	fakeR = new FakeR(this);
+  fakeR = new FakeR(this);
 
     Window window = getWindow();
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
