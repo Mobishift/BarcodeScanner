@@ -70,7 +70,7 @@
          *    }
          * @param {Function} errorCallback
          */
-        BarcodeScanner.prototype.scan = function (successCallback, errorCallback) {
+        BarcodeScanner.prototype.scan = function (url, parkinglotId, successCallback, errorCallback) {
             if (errorCallback == null) {
                 errorCallback = function () {
                 };
@@ -86,7 +86,7 @@
                 return;
             }
 
-            exec(successCallback, errorCallback, 'BarcodeScanner', 'scan', []);
+            exec(successCallback, errorCallback, 'BarcodeScanner', 'scan', [{'host': url, 'parkinglotId': parkinglotId}]);
         };
 
         //-------------------------------------------------------------------
