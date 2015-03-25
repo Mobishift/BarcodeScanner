@@ -44,7 +44,6 @@
     <!-- android -->
     <platform name="android">
 
-        <source-file src="src/android/libs/okhttp-2.3.0.jar" target-dir="libs" />
         <source-file src="src/android/com/phonegap/plugins/barcodescanner/BarcodeScanner.java" target-dir="src/com/phonegap/plugins/barcodescanner" />
         <source-file src="src/android/com/mobishift/http/CouponRequest.java" target-dir="src/com/mobishift/http" />
         <!--
