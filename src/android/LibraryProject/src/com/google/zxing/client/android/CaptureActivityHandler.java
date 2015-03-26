@@ -35,8 +35,13 @@ import android.util.Log;
 import android.widget.Toast;
 
 import com.google.zxing.FakeR;
+import com.mobishift.http.CouponRequest;
 
 import java.util.Collection;
+
+import retrofit.Callback;
+import retrofit.RetrofitError;
+import retrofit.client.Response;
 
 /**
  * This class handles all the messaging which comprises the state machine for capture.
@@ -97,9 +102,47 @@ public final class CaptureActivityHandler extends Handler {
         Log.d(TAG, "Got return scan result message");
 //        activity.setResult(Activity.RESULT_OK, (Intent) message.obj);
         Intent intent = (Intent) message.obj;
-        
-        Toast.makeText(activity, intent.getStringExtra("SCAN_RESULT"), Toast.LENGTH_SHORT).show();
-        restartPreviewAndDecode();
+        String url = intent.getStringExtra("SCAN_RESULT");
+        CouponRequest couponRequest = CouponRequest.getCouponRequest();
+        boolean isCoupon = couponRequest.get(url, new retrofit.Callback<CouponRequest.Coupon>() {
+            @Override
+            public void success(CouponRequest.Coupon coupon, Response response) {
+                if(coupon != null){
+                    Toast.makeText(activity, coupon.used_at, Toast.LENGTH_SHORT).show();
+                }else{
+                    Toast.makeText(activity, "发生错误，请重新扫描", Toast.LENGTH_SHORT).show();
+                }
+                restartPreviewAndDecode();
+            }
+
+            @Override
+            public void failure(RetrofitError retrofitError) {
+                switch (retrofitError.getKind()){
+                    case NETWORK:
+                        Toast.makeText(activity, "请检查网络链接", Toast.LENGTH_SHORT).show();
+                        break;
+                    case HTTP:
+                        int status = retrofitError.getResponse().getStatus();
+                        if(status == 404){
+                            Toast.makeText(activity, "该优惠券非本停车场优惠券", Toast.LENGTH_SHORT).show();
+                        }else{
+                            Toast.makeText(activity, "发生错误:" + status, Toast.LENGTH_SHORT).show();
+                        }
+                        break;
+                    case UNEXPECTED:
+//                        Log.d("UNEXPECTED", retrofitError.getUrl());
+//                        Log.d("UNEXPECTED", retrofitError.getResponse().getStatus() + "");
+//                        Log.d("UNEXPECTED", retrofitError.getResponse().getReason());
+                        Toast.makeText(activity, "未知错误:" + retrofitError.getMessage() , Toast.LENGTH_SHORT).show();
+                        break;
+                }
+                restartPreviewAndDecode();
+            }
+        });
+        if(!isCoupon){
+            Toast.makeText(activity, "二维码非法", Toast.LENGTH_SHORT).show();
+            restartPreviewAndDecode();
+        }
 //        activity.finish();
     } else if (message.what == fakeR.getId("id", "launch_product_query")) {
         Log.d(TAG, "Got product query message");

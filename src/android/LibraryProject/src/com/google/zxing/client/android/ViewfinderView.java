@@ -87,10 +87,10 @@ public final class ViewfinderView extends View {
       return; // not ready yet, early draw before done configuring
     }
     Rect frame = cameraManager.getFramingRect();
-    frame = new Rect(frame.top, frame.left, frame.bottom, frame.right);
     if (frame == null) {
       return;
     }
+    frame = new Rect(frame.top, frame.left, frame.bottom, frame.right);
     int width = canvas.getWidth();
     int height = canvas.getHeight();
 

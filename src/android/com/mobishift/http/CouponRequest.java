@@ -1,27 +1,27 @@
 package com.mobishift.http;
 
 import com.phonegap.plugins.barcodescanner.BarcodeScanner;
-import com.squareup.okhttp.MediaType;
-import com.squareup.okhttp.OkHttpClient;
-import com.squareup.okhttp.Request;
-import com.squareup.okhttp.RequestBody;
-import com.squareup.okhttp.Response;
+
+import retrofit.Callback;
+import retrofit.RestAdapter;
+import retrofit.http.POST;
+import retrofit.http.Path;
+
 /**
  * Created by Gamma on 15/3/25.
  */
 public class CouponRequest {
-    public static final MediaType JSON = MediaType.parse("application/json; charset=utf-8");
-    private static final String URL = "/parking/parkinglotcouponusers";
 
     private static CouponRequest couponRequest = null;
 
-    private OkHttpClient client = new OkHttpClient();
     private String url;
-    private String parkinglot;
+    private RestAdapter restAdapter;
+    private CouponService couponService;
 
     private CouponRequest(){
-        url = BarcodeScanner.HOST_URL + URL;
-        parkinglot = BarcodeScanner.PARKINGLOT;
+        url = BarcodeScanner.HOST_URL;
+        restAdapter = new RestAdapter.Builder().setEndpoint(url).build();
+        couponService = restAdapter.create(CouponService.class);
     }
 
     public static CouponRequest getCouponRequest(){
@@ -31,17 +31,34 @@ public class CouponRequest {
         return couponRequest;
     }
 
-    public void post(String url){
-        if(url.contains("parkinglotcouponuser=")){
-            String[] strings = url.split("parkinglotcouponuser=")[1].split("__");
+    public boolean get(String urlString, Callback<Coupon> cb){
+        boolean isValid = true;
+        if(urlString.contains("parkinglotcouponuser=")){
+            String[] strings = urlString.split("parkinglotcouponuser=")[1].split("__");
             if(strings.length == 2){
                 String id = strings[0];
                 String code = strings[1];
-                String postUrl = url + "/" + id + "/code/" + code;
-                RequestBody body = RequestBody.create(JSON, "{}");
-                Request request = new Request.Builder().url(postUrl).post(body).build();
-                Response response = client.newCall(request).execute();
+                couponService.getCoupon(id, code, cb);
+            }else{
+                isValid = false;
             }
+        }else{
+            isValid = false;
         }
+        return isValid;
+    }
+
+
+    public interface CouponService{
+        @POST("/parking/parkinglotcouponusers/{id}/code/{code}/check")
+        void getCoupon(@Path("id") String parkinglot, @Path("code") String code, Callback<Coupon> cb);
+    }
+
+    public final class Coupon{
+        public String parkinglot;
+        public boolean check;
+        public String used_at;
+        public double price;
+        public double origin_price;
     }
 }
