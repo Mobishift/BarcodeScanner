@@ -206,7 +206,14 @@
     </LinearLayout>
 
   </LinearLayout>
-
+  <TextView
+      android:layout_width="wrap_content"
+      android:layout_height="wrap_content"
+      android:id="@+id/coupon_view"
+      android:layout_gravity="bottom|center_horizontal"
+      android:textSize="26sp"
+      android:textColor="@color/status_text"
+      android:paddingBottom="14dip"/>
   <TextView android:id="@+id/status_view"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"

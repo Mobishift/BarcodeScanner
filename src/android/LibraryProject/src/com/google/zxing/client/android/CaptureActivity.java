@@ -67,6 +67,7 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.text.DateFormat;
+import java.text.SimpleDateFormat;
 import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
@@ -110,6 +111,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
   private Result savedResultToShow;
   private ViewfinderView viewfinderView;
   private TextView statusView;
+  private TextView couponView;
   private View resultView;
   private Result lastResult;
   private boolean hasSurface;
@@ -172,6 +174,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 
     resultView = findViewById(fakeR.getId("id", "result_view"));
     statusView = (TextView) findViewById(fakeR.getId("id", "status_view"));
+    couponView = (TextView) findViewById(fakeR.getId("id", "coupon_view"));
 
     handler = null;
     lastResult = null;
@@ -282,6 +285,24 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
       surfaceHolder.removeCallback(this);
     }
     super.onPause();
+  }
+
+  public void setCouponView(boolean check, Date usedAt, double originPrice){
+      SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy年M月d日 HH:mm");
+      StringBuilder stringBuilder = new StringBuilder();
+      if(!check){
+          stringBuilder.append("该优惠券已失效\n");
+      }
+      stringBuilder.append("优惠券价值：" + originPrice + "\n");
+      if(usedAt != null){
+          stringBuilder.append("使用时间：\n" + simpleDateFormat.format(usedAt));
+      }
+      couponView.setText(stringBuilder.toString());
+      couponView.setVisibility(View.VISIBLE);
+  }
+
+  public void clearCouponView(){
+      couponView.setVisibility(View.INVISIBLE);
   }
 
   @Override

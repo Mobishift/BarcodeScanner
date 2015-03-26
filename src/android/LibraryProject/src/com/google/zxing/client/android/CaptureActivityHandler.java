@@ -37,7 +37,11 @@ import android.widget.Toast;
 import com.google.zxing.FakeR;
 import com.mobishift.http.CouponRequest;
 
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Collection;
+import java.util.Date;
 
 import retrofit.Callback;
 import retrofit.RetrofitError;
@@ -103,12 +107,26 @@ public final class CaptureActivityHandler extends Handler {
 //        activity.setResult(Activity.RESULT_OK, (Intent) message.obj);
         Intent intent = (Intent) message.obj;
         String url = intent.getStringExtra("SCAN_RESULT");
+        activity.clearCouponView();
         CouponRequest couponRequest = CouponRequest.getCouponRequest();
         boolean isCoupon = couponRequest.get(url, new retrofit.Callback<CouponRequest.Coupon>() {
             @Override
             public void success(CouponRequest.Coupon coupon, Response response) {
                 if(coupon != null){
-                    Toast.makeText(activity, coupon.used_at, Toast.LENGTH_SHORT).show();
+                    Date date = null;
+                    if(coupon.check){
+                        date = Calendar.getInstance().getTime();
+                    }else{
+                        if(coupon.used_at != null){
+                            SimpleDateFormat simpleDateFormat =  new SimpleDateFormat("yyyy-MM-d'T'HH:mm:ss");
+                            try{
+                                date = simpleDateFormat.parse(coupon.used_at);
+                            }catch (ParseException ex){
+
+                            }
+                        }
+                    }
+                    activity.setCouponView(coupon.check, date, coupon.origin_price);
                 }else{
                     Toast.makeText(activity, "发生错误，请重新扫描", Toast.LENGTH_SHORT).show();
                 }

@@ -15,11 +15,13 @@ public class CouponRequest {
     private static CouponRequest couponRequest = null;
 
     private String url;
+    private String parkinglot;
     private RestAdapter restAdapter;
     private CouponService couponService;
 
     private CouponRequest(){
         url = BarcodeScanner.HOST_URL;
+        parkinglot = BarcodeScanner.PARKINGLOT;
         restAdapter = new RestAdapter.Builder().setEndpoint(url).build();
         couponService = restAdapter.create(CouponService.class);
     }
@@ -38,7 +40,7 @@ public class CouponRequest {
             if(strings.length == 2){
                 String id = strings[0];
                 String code = strings[1];
-                couponService.getCoupon(id, code, cb);
+                couponService.getCoupon(id, parkinglot, code, cb);
             }else{
                 isValid = false;
             }
@@ -50,8 +52,8 @@ public class CouponRequest {
 
 
     public interface CouponService{
-        @POST("/parking/parkinglotcouponusers/{id}/code/{code}/check")
-        void getCoupon(@Path("id") String parkinglot, @Path("code") String code, Callback<Coupon> cb);
+        @POST("/parking/parkinglotcouponusers/{id}/parkinglot/{parkinglot}/code/{code}/check")
+        void getCoupon(@Path("id") String id,@Path("parkinglot") String parkinglot, @Path("code") String code, Callback<Coupon> cb);
     }
 
     public final class Coupon{
