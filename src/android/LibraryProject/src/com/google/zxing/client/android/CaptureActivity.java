@@ -293,7 +293,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
       if(!check){
           stringBuilder.append("该优惠券已失效\n");
       }
-      stringBuilder.append("优惠券价值：" + originPrice + "\n");
+      stringBuilder.append("优惠券价值：" + originPrice + "元\n");
       if(usedAt != null){
           stringBuilder.append("使用时间：\n" + simpleDateFormat.format(usedAt));
       }
