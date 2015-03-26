@@ -186,26 +186,68 @@
 
                 
                 HttpManager *manager = [HttpManager sharedClient];
-                manager.responseSerializer = [TextResponseSerializer serializer];
+                manager.responseSerializer = [AFJSONResponseSerializer serializer];
                 [manager POST:url parameters:nil success:^(AFHTTPRequestOperation *operation, id responseObject) {
                     NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
                     [dictionary setObject:[NSNumber numberWithInt:operation.response.statusCode] forKey:@"status"];
                     [dictionary setObject:responseObject forKey:@"data"];
                     
-//                    UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: @"success" delegate: self cancelButtonTitle: @"Ok" otherButtonTitles: nil];
-//                    
-//                    [alert show];
-//                    [alert release];
+                    NSDictionary *dic = (NSDictionary *) responseObject;
+                    NSString *content = @"";
+                    NSDate *date = nil;
+                    if(![dic objectForKey: @"id"]){
+                        content = [content stringByAppendingString: @"该优惠券已失效\n"];
+                        if([dic objectForKey: @"used_at"] != nil){
+                            NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+                            [dateFormatter setDateFormat: @"yyyy-MM-dd'T'HH:mm:ss.SSS"];
+                            date = [dateFormatter dateFromString: [dic objectForKey: @"used_at"]];
+                            [dateFormatter release];
+                        }
+                    }else{
+                        date = [NSDate date];
+                    }
+                    
+                    content = [content stringByAppendingFormat: @"优惠卷价格：%@\n", [dic objectForKey:@"origin_price"]];
+                    if(date != nil){
+                        NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+                        [dateFormatter setDateFormat: @"yyyy年MM月dd日 HH:mm"];
+                        content = [content stringByAppendingFormat: @"使用时间:%@", [dateFormatter stringFromDate: date]];
+                        [dateFormatter release];
+                    }
+                    
+                    
+                    UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: content delegate: nil cancelButtonTitle: @"Ok" otherButtonTitles: nil];
+                    
+                    [alert show];
+                    [alert release];
                     
                 } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-//                    UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: @"该优惠券非本停车场优惠券" delegate: self cancelButtonTitle: @"Ok" otherButtonTitles: nil];
-//                    
-//                    [alert show];
-//                    [alert release];
-                    
-                    scanner.resText = @"";
+                    if(operation.response != nil && operation.response.statusCode == 404){
+                        UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: @"该优惠券非本停车场优惠券" delegate: self cancelButtonTitle: @"Ok" otherButtonTitles: nil];
+                        
+                        [alert show];
+                        [alert release];
+                    }else{
+                        NSString *string = @"发生错误：";
+                        string = [string stringByAppendingFormat: @"%d，请重新打开扫码", error.code];
+                        UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: string delegate:nil cancelButtonTitle: @"Ok" otherButtonTitles: nil];
+                        
+                        [alert show];
+                        [alert release];
+
+                    }
                 }];
+            }else{
+                UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: @"二维码非法" delegate: nil cancelButtonTitle: @"Ok" otherButtonTitles: nil];
+                
+                [alert show];
+                [alert release];
             }
+        }else{
+            UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: @"二维码非法" delegate: nil cancelButtonTitle: @"Ok" otherButtonTitles: nil];
+            
+            [alert show];
+            [alert release];
         }
     }
 }
