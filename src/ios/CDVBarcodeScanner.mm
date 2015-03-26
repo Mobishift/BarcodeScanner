@@ -180,10 +180,12 @@
             if ([resArray count] == 2) {
                 NSString *parkinglotcouponuserPk = [resArray objectAtIndex:0];
                 NSString *code = [resArray objectAtIndex:1];
-                UIAlertView *someError = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: code delegate: self cancelButtonTitle: @"Ok" otherButtonTitles: nil];
+                NSString *url = [NSString stringWithFormat:@"%@/parking/parkinglotcouponusers/%@/code/%@/check", host, parkinglotcouponuserPk, code];
                 
-                [someError show];
-                [someError release];
+                UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: url delegate: self cancelButtonTitle: @"Ok" otherButtonTitles: nil];
+                
+                [alert show];
+                [alert release];
             }
         }
     }
