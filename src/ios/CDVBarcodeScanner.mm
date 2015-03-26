@@ -18,6 +18,8 @@
 
 #import <Cordova/CDVPlugin.h>
 
+#import "TextResponseSerializer.h"
+#import "HttpManager.h"
 
 //------------------------------------------------------------------------------
 // Delegate to handle orientation functions
@@ -48,7 +50,7 @@
 - (NSString*)isScanNotPossible;
 - (void)scan:(CDVInvokedUrlCommand*)command;
 - (void)encode:(CDVInvokedUrlCommand*)command;
-- (void)returnSuccess:(NSString*)scannedText host:(NSString*)host parkinglotId:(NSString*)parkinglotId format:(NSString*)format cancelled:(BOOL)cancelled flipped:(BOOL)flipped callback:(NSString*)callback;
+- (void)returnSuccess:(NSString*)scannedText scanner:(CDVbcsProcessor*)scanner host:(NSString*)host parkinglotId:(NSString*)parkinglotId format:(NSString*)format cancelled:(BOOL)cancelled flipped:(BOOL)flipped callback:(NSString*)callback;
 - (void)returnError:(NSString*)message callback:(NSString*)callback;
 @end
 
@@ -171,7 +173,7 @@
 }
 
 //--------------------------------------------------------------------------
-- (void)returnSuccess:(NSString*)scannedText host:(NSString *)host parkinglotId:(NSString *)parkinglotId format:(NSString *)format cancelled:(BOOL)cancelled flipped:(BOOL)flipped callback:(NSString *)callback{
+- (void)returnSuccess:(NSString*)scannedText scanner:(CDVbcsProcessor*)scanner host:(NSString *)host parkinglotId:(NSString *)parkinglotId format:(NSString *)format cancelled:(BOOL)cancelled flipped:(BOOL)flipped callback:(NSString *)callback{
     if (!cancelled){
         NSArray *scannedTextArray = [scannedText componentsSeparatedByString:@"parkinglotcouponuser="];
         if ([scannedTextArray count] == 2) {
@@ -180,12 +182,29 @@
             if ([resArray count] == 2) {
                 NSString *parkinglotcouponuserPk = [resArray objectAtIndex:0];
                 NSString *code = [resArray objectAtIndex:1];
-                NSString *url = [NSString stringWithFormat:@"%@/parking/parkinglotcouponusers/%@/code/%@/check", host, parkinglotcouponuserPk, code];
+                NSString *url = [NSString stringWithFormat:@"%@/parking/parkinglotcouponusers/%@/parkinglot/%@/code/%@/check", host, parkinglotcouponuserPk, parkinglotId, code];
+
                 
-                UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: url delegate: self cancelButtonTitle: @"Ok" otherButtonTitles: nil];
-                
-                [alert show];
-                [alert release];
+                HttpManager *manager = [HttpManager sharedClient];
+                manager.responseSerializer = [TextResponseSerializer serializer];
+                [manager POST:url parameters:nil success:^(AFHTTPRequestOperation *operation, id responseObject) {
+                    NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
+                    [dictionary setObject:[NSNumber numberWithInt:operation.response.statusCode] forKey:@"status"];
+                    [dictionary setObject:responseObject forKey:@"data"];
+                    
+//                    UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: @"success" delegate: self cancelButtonTitle: @"Ok" otherButtonTitles: nil];
+//                    
+//                    [alert show];
+//                    [alert release];
+                    
+                } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+//                    UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: @"该优惠券非本停车场优惠券" delegate: self cancelButtonTitle: @"Ok" otherButtonTitles: nil];
+//                    
+//                    [alert show];
+//                    [alert release];
+                    
+                    scanner.resText = @"";
+                }];
             }
         }
     }
@@ -313,7 +332,7 @@ parentViewController:(UIViewController*)parentViewController
 //     [self barcodeScanDone];
     if (![self.resText isEqualToString:text]) {
         self.resText = text;
-        [self.plugin returnSuccess:text host:self.host parkinglotId:self.parkinglotId format:format cancelled:FALSE flipped:FALSE callback:self.callback];
+        [self.plugin returnSuccess:text scanner:self host:self.host parkinglotId:self.parkinglotId format:format cancelled:FALSE flipped:FALSE callback:self.callback];
     }
 }
 
@@ -326,7 +345,7 @@ parentViewController:(UIViewController*)parentViewController
 //--------------------------------------------------------------------------
 - (void)barcodeScanCancelled {
     [self barcodeScanDone];
-    [self.plugin returnSuccess:@"" host:self.host parkinglotId:self.parkinglotId format:@"" cancelled:TRUE flipped:self.isFlipped callback:self.callback];
+    [self.plugin returnSuccess:@"" scanner:self host:self.host parkinglotId:self.parkinglotId format:@"" cancelled:TRUE flipped:self.isFlipped callback:self.callback];
     if (self.isFlipped) {
         self.isFlipped = NO;
     }
