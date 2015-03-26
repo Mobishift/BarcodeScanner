@@ -43,9 +43,6 @@
 
     <!-- android -->
     <platform name="android">
-
-        <source-file src="src/android/com/phonegap/plugins/barcodescanner/BarcodeScanner.java" target-dir="src/com/phonegap/plugins/barcodescanner" />
-        <source-file src="src/android/com/mobishift/http/CouponRequest.java" target-dir="src/com/mobishift/http" />
         <!--
         <source-file src="R.java" target-dir="src/com/google/zxing/client/android" />
         -->
@@ -104,7 +101,12 @@
             search: (src/android/LibraryProject/(.+?)/[^/]+)$
             replace: <source-file src="$1" target-dir="$2"/>
         -->
+        <source-file src="src/android/com/phonegap/plugins/barcodescanner/BarcodeScanner.java" target-dir="src/com/phonegap/plugins/barcodescanner" />
+        <source-file src="src/android/com/mobishift/http/CouponRequest.java" target-dir="src/com/mobishift/http" />
+        <source-file src="src/android/libs/retrofit-1.9.0.jar" target-dir="libs" />
+
         <!-- source-file -->
+
         <source-file src="src/android/LibraryProject/res/drawable/launcher_icon.png" target-dir="res/drawable"/>
         <source-file src="src/android/LibraryProject/res/drawable/share_via_barcode.png" target-dir="res/drawable"/>
         <source-file src="src/android/LibraryProject/res/drawable/shopper_icon.png" target-dir="res/drawable"/>
