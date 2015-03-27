@@ -297,7 +297,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
               stringBuilder.append("该优惠券已过期\n");
           }
       }else{
-        stringBuilder.append("优惠卷有效\n");
+        stringBuilder.append("优惠券有效\n");
       }
       stringBuilder.append("价值：" + originPrice + "元\n");
       if(usedAt != null){

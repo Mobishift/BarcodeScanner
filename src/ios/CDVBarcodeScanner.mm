@@ -205,10 +205,10 @@
                             date = [dateFormatter dateFromString: [dic objectForKey: @"used_at"]];
                             [dateFormatter release];
                         }else{
-                            content = [content stringByAppendingString: @"该优惠卷已过期\n"];
+                            content = [content stringByAppendingString: @"该优惠券已过期\n"];
                         }
                     }else{
-                        content = [content stringByAppendingString: @"优惠卷有效\n"];
+                        content = [content stringByAppendingString: @"优惠券有效\n"];
                         date = [NSDate date];
                     }
                     
