@@ -60,6 +60,7 @@ public final class CaptureActivityHandler extends Handler {
   private final DecodeThread decodeThread;
   private State state;
   private final CameraManager cameraManager;
+  private String handleText = "";
 
   private enum State {
     PREVIEW,
@@ -107,58 +108,63 @@ public final class CaptureActivityHandler extends Handler {
 //        activity.setResult(Activity.RESULT_OK, (Intent) message.obj);
         Intent intent = (Intent) message.obj;
         String url = intent.getStringExtra("SCAN_RESULT");
-        activity.clearCouponView();
-        CouponRequest couponRequest = CouponRequest.getCouponRequest();
-        boolean isCoupon = couponRequest.get(url, new retrofit.Callback<CouponRequest.Coupon>() {
-            @Override
-            public void success(CouponRequest.Coupon coupon, Response response) {
-                if(coupon != null){
-                    Date date = null;
-                    if(coupon.check){
-                        date = Calendar.getInstance().getTime();
-                    }else{
-                        if(coupon.used_at != null){
-                            SimpleDateFormat simpleDateFormat =  new SimpleDateFormat("yyyy-MM-d'T'HH:mm:ss");
-                            try{
-                                date = simpleDateFormat.parse(coupon.used_at);
-                            }catch (ParseException ex){
+        if(!handleText.equals(url)){
+            handleText = url;
+            activity.setCouponText("请求中...");
+            CouponRequest couponRequest = CouponRequest.getCouponRequest();
+            boolean isCoupon = couponRequest.get(url, new retrofit.Callback<CouponRequest.Coupon>() {
+                @Override
+                public void success(CouponRequest.Coupon coupon, Response response) {
+                    if(coupon != null){
+                        Date date = null;
+                        if(coupon.check){
+                            date = Calendar.getInstance().getTime();
+                        }else{
+                            if(coupon.used_at != null){
+                                SimpleDateFormat simpleDateFormat =  new SimpleDateFormat("yyyy-MM-d'T'HH:mm:ss");
+                                try{
+                                    date = simpleDateFormat.parse(coupon.used_at);
+                                }catch (ParseException ex){
 
+                                }
                             }
                         }
+                        activity.setCouponView(coupon.check, date, coupon.origin_price);
+                    }else{
+                        Toast.makeText(activity, "发生错误，请重新扫描", Toast.LENGTH_SHORT).show();
                     }
-                    activity.setCouponView(coupon.check, date, coupon.origin_price);
-                }else{
-                    Toast.makeText(activity, "发生错误，请重新扫描", Toast.LENGTH_SHORT).show();
+                    restartPreviewAndDecode();
                 }
-                restartPreviewAndDecode();
-            }
 
-            @Override
-            public void failure(RetrofitError retrofitError) {
-                switch (retrofitError.getKind()){
-                    case NETWORK:
-                        Toast.makeText(activity, "请检查网络链接", Toast.LENGTH_SHORT).show();
-                        break;
-                    case HTTP:
-                        int status = retrofitError.getResponse().getStatus();
-                        if(status == 404){
-                            Toast.makeText(activity, "该优惠券非本停车场优惠券", Toast.LENGTH_SHORT).show();
-                        }else{
-                            Toast.makeText(activity, "发生错误:" + status, Toast.LENGTH_SHORT).show();
-                        }
-                        break;
-                    case UNEXPECTED:
-//                        Log.d("UNEXPECTED", retrofitError.getUrl());
-//                        Log.d("UNEXPECTED", retrofitError.getResponse().getStatus() + "");
-//                        Log.d("UNEXPECTED", retrofitError.getResponse().getReason());
-                        Toast.makeText(activity, "未知错误:" + retrofitError.getMessage() , Toast.LENGTH_SHORT).show();
-                        break;
+                @Override
+                public void failure(RetrofitError retrofitError) {
+                    switch (retrofitError.getKind()){
+                        case NETWORK:
+                            Toast.makeText(activity, "请检查网络链接", Toast.LENGTH_SHORT).show();
+                            break;
+                        case HTTP:
+                            int status = retrofitError.getResponse().getStatus();
+                            if(status == 404){
+                                Toast.makeText(activity, "该优惠券非本停车场优惠券", Toast.LENGTH_SHORT).show();
+                            }else{
+                                Toast.makeText(activity, "发生错误:" + status, Toast.LENGTH_SHORT).show();
+                            }
+                            break;
+                        case UNEXPECTED:
+    //                        Log.d("UNEXPECTED", retrofitError.getUrl());
+    //                        Log.d("UNEXPECTED", retrofitError.getResponse().getStatus() + "");
+    //                        Log.d("UNEXPECTED", retrofitError.getResponse().getReason());
+                            Toast.makeText(activity, "未知错误:" + retrofitError.getMessage() , Toast.LENGTH_SHORT).show();
+                            break;
+                    }
+                    restartPreviewAndDecode();
                 }
+            });
+            if(!isCoupon){
+                Toast.makeText(activity, "二维码非法", Toast.LENGTH_SHORT).show();
                 restartPreviewAndDecode();
             }
-        });
-        if(!isCoupon){
-            Toast.makeText(activity, "二维码非法", Toast.LENGTH_SHORT).show();
+        }else{
             restartPreviewAndDecode();
         }
 //        activity.finish();

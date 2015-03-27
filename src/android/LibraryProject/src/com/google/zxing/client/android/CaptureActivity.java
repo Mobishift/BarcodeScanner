@@ -291,18 +291,22 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
       SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy年M月d日 HH:mm");
       StringBuilder stringBuilder = new StringBuilder();
       if(!check){
-          stringBuilder.append("该优惠券已失效\n");
+          if(usedAt != null){
+              stringBuilder.append("该优惠券已被使用\n");
+          }else{
+              stringBuilder.append("该优惠券已过期\n");
+          }
+
       }
-      stringBuilder.append("优惠券价值：" + originPrice + "元\n");
+      stringBuilder.append("优惠券价值：" + originPrice + "\n");
       if(usedAt != null){
           stringBuilder.append("使用时间：\n" + simpleDateFormat.format(usedAt));
       }
       couponView.setText(stringBuilder.toString());
-      couponView.setVisibility(View.VISIBLE);
   }
 
-  public void clearCouponView(){
-      couponView.setVisibility(View.INVISIBLE);
+  public void setCouponText(String text){
+      couponView.setText(text);
   }
 
   @Override
