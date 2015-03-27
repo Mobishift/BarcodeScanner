@@ -100,6 +100,7 @@
 @property (nonatomic, retain) IBOutlet UIView* overlayView;
 // unsafe_unretained is equivalent to assign - used to prevent retain cycles in the property below
 @property (nonatomic, unsafe_unretained) id orientationDelegate;
+@property (nonatomic, retain) UILabel* uiLabel;
 
 - (id)initWithProcessor:(CDVbcsProcessor*)processor alternateOverlay:(NSString *)alternateXib;
 - (void)startCapturing;
@@ -184,7 +185,7 @@
                 NSString *code = [resArray objectAtIndex:1];
                 NSString *url = [NSString stringWithFormat:@"%@/parking/parkinglotcouponusers/%@/parkinglot/%@/code/%@/check", host, parkinglotcouponuserPk, parkinglotId, code];
 
-                
+                scanner.viewController.uiLabel.text = @"请求中...";
                 HttpManager *manager = [HttpManager sharedClient];
                 manager.responseSerializer = [AFJSONResponseSerializer serializer];
                 [manager POST:url parameters:nil success:^(AFHTTPRequestOperation *operation, id responseObject) {
@@ -196,12 +197,15 @@
                     NSString *content = @"";
                     NSDate *date = nil;
                     if(![dic objectForKey: @"id"]){
-                        content = [content stringByAppendingString: @"该优惠券已失效\n"];
-                        if([dic objectForKey: @"used_at"] != nil){
+                        
+                        if([dic objectForKey: @"used_at"] != [NSNull null]){
+                            content = [content stringByAppendingString: @"该优惠券已被使用\n"];
                             NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
                             [dateFormatter setDateFormat: @"yyyy-MM-dd'T'HH:mm:ss.SSS"];
                             date = [dateFormatter dateFromString: [dic objectForKey: @"used_at"]];
                             [dateFormatter release];
+                        }else{
+                            content = [content stringByAppendingString: @"该优惠卷已过期\n"];
                         }
                     }else{
                         date = [NSDate date];
@@ -215,39 +219,23 @@
                         [dateFormatter release];
                     }
                     
-                    
-                    UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: content delegate: nil cancelButtonTitle: @"Ok" otherButtonTitles: nil];
-                    
-                    [alert show];
-                    [alert release];
+                    scanner.viewController.uiLabel.text = content;
                     
                 } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
                     if(operation.response != nil && operation.response.statusCode == 404){
-                        UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: @"该优惠券非本停车场优惠券" delegate: self cancelButtonTitle: @"Ok" otherButtonTitles: nil];
-                        
-                        [alert show];
-                        [alert release];
+                        scanner.viewController.uiLabel.text = @"该优惠券非本停车场优惠券";
                     }else{
                         NSString *string = @"发生错误：";
                         string = [string stringByAppendingFormat: @"%d，请重新打开扫码", error.code];
-                        UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: string delegate:nil cancelButtonTitle: @"Ok" otherButtonTitles: nil];
                         
-                        [alert show];
-                        [alert release];
-
+                        scanner.viewController.uiLabel.text = string;
                     }
                 }];
             }else{
-                UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: @"二维码非法" delegate: nil cancelButtonTitle: @"Ok" otherButtonTitles: nil];
-                
-                [alert show];
-                [alert release];
+                scanner.viewController.uiLabel.text = @"二维码非法";
             }
         }else{
-            UIAlertView *alert = [[UIAlertView alloc] initWithTitle: @"扫优惠券" message: @"二维码非法" delegate: nil cancelButtonTitle: @"Ok" otherButtonTitles: nil];
-            
-            [alert show];
-            [alert release];
+            scanner.viewController.uiLabel.text = @"二维码非法";
         }
     }
 }
@@ -724,6 +712,8 @@ parentViewController:(UIViewController*)parentViewController
 @synthesize shutterPressed = _shutterPressed;
 @synthesize alternateXib   = _alternateXib;
 @synthesize overlayView    = _overlayView;
+@synthesize uiLabel        = _uiLabel;
+
 
 //--------------------------------------------------------------------------
 - (id)initWithProcessor:(CDVbcsProcessor*)processor alternateOverlay:(NSString *)alternateXib {
@@ -901,13 +891,23 @@ parentViewController:(UIViewController*)parentViewController
     
     [overlayView addSubview: reticleView];
     
+    self.uiLabel = [[[UILabel alloc] initWithFrame: CGRectMake(30, rootViewHeight - 160, rootViewWidth - 2 * 30, 120)] autorelease];
+    self.uiLabel.textAlignment = NSTextAlignmentCenter;
+    self.uiLabel.backgroundColor = [UIColor colorWithRed: 0 green: 0 blue: 0 alpha:0.6];
+    self.uiLabel.textColor = [UIColor whiteColor];
+    self.uiLabel.numberOfLines = 0;
+    
+    self.uiLabel.text = @"请将二维码置于取景框内扫描。";
+    
+    [overlayView addSubview: self.uiLabel];
+    
     return overlayView;
 }
 
 //--------------------------------------------------------------------------
 
 #define RETICLE_SIZE    500.0f
-#define RETICLE_WIDTH    10.0f
+#define RETICLE_WIDTH    5.0f
 #define RETICLE_OFFSET   60.0f
 #define RETICLE_ALPHA     0.4f
 
