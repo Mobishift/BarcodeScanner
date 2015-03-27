@@ -196,7 +196,7 @@
                     NSDictionary *dic = (NSDictionary *) responseObject;
                     NSString *content = @"";
                     NSDate *date = nil;
-                    if(![dic objectForKey: @"id"]){
+                    if(![dic objectForKey: @"check"]){
                         
                         if([dic objectForKey: @"used_at"] != [NSNull null]){
                             content = [content stringByAppendingString: @"该优惠券已被使用\n"];
@@ -208,10 +208,11 @@
                             content = [content stringByAppendingString: @"该优惠卷已过期\n"];
                         }
                     }else{
+                        content = [content stringByAppendingString: @"优惠卷有效\n"];
                         date = [NSDate date];
                     }
                     
-                    content = [content stringByAppendingFormat: @"优惠卷价格：%@\n", [dic objectForKey:@"origin_price"]];
+                    content = [content stringByAppendingFormat: @"价值：%@元\n", [dic objectForKey:@"origin_price"]];
                     if(date != nil){
                         NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
                         [dateFormatter setDateFormat: @"yyyy年MM月dd日 HH:mm"];
@@ -891,7 +892,7 @@ parentViewController:(UIViewController*)parentViewController
     
     [overlayView addSubview: reticleView];
     
-    self.uiLabel = [[[UILabel alloc] initWithFrame: CGRectMake(30, rootViewHeight - 160, rootViewWidth - 2 * 30, 120)] autorelease];
+    self.uiLabel = [[[UILabel alloc] initWithFrame: CGRectMake(30, 40, rootViewWidth - 2 * 30, 120)] autorelease];
     self.uiLabel.textAlignment = NSTextAlignmentCenter;
     self.uiLabel.backgroundColor = [UIColor colorWithRed: 0 green: 0 blue: 0 alpha:0.6];
     self.uiLabel.textColor = [UIColor whiteColor];
@@ -920,18 +921,18 @@ parentViewController:(UIViewController*)parentViewController
     CGContextRef context = UIGraphicsGetCurrentContext();
     
     if (self.processor.is1D) {
-        UIColor* color = [UIColor colorWithRed:1.0 green:0.0 blue:0.0 alpha:RETICLE_ALPHA];
-        CGContextSetStrokeColorWithColor(context, color.CGColor);
-        CGContextSetLineWidth(context, RETICLE_WIDTH);
-        CGContextBeginPath(context);
-        CGFloat lineOffset = RETICLE_OFFSET+(0.5*RETICLE_WIDTH);
-        CGContextMoveToPoint(context, lineOffset, RETICLE_SIZE/2);
-        CGContextAddLineToPoint(context, RETICLE_SIZE-lineOffset, 0.5*RETICLE_SIZE);
-        CGContextStrokePath(context);
+        // UIColor* color = [UIColor colorWithRed:1.0 green:0.0 blue:0.0 alpha:RETICLE_ALPHA];
+        // CGContextSetStrokeColorWithColor(context, color.CGColor);
+        // CGContextSetLineWidth(context, RETICLE_WIDTH);
+        // CGContextBeginPath(context);
+        // CGFloat lineOffset = RETICLE_OFFSET+(0.5*RETICLE_WIDTH);
+        // CGContextMoveToPoint(context, lineOffset, RETICLE_SIZE/2);
+        // CGContextAddLineToPoint(context, RETICLE_SIZE-lineOffset, 0.5*RETICLE_SIZE);
+        // CGContextStrokePath(context);
     }
     
     if (self.processor.is2D) {
-        UIColor* color = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:RETICLE_ALPHA];
+        UIColor* color = [UIColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:RETICLE_ALPHA];
         CGContextSetStrokeColorWithColor(context, color.CGColor);
         CGContextSetLineWidth(context, RETICLE_WIDTH);
         CGContextStrokeRect(context,
