@@ -68,6 +68,7 @@ import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
@@ -288,7 +289,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
   }
 
   public void setCouponView(boolean check, Date usedAt, double originPrice){
-      SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy年M月d日 HH:mm");
+//      SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy年M月d日 HH:mm");
       StringBuilder stringBuilder = new StringBuilder();
       if(!check){
           if(usedAt != null){
@@ -296,18 +297,44 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
           }else{
               stringBuilder.append("该优惠券已过期\n");
           }
-      }else{
-        stringBuilder.append("优惠券有效\n");
+
       }
-      stringBuilder.append("价值：" + originPrice + "元\n");
+      stringBuilder.append("优惠券价值：" + originPrice + "\n");
       if(usedAt != null){
-          stringBuilder.append("使用时间：\n" + simpleDateFormat.format(usedAt));
+          stringBuilder.append("使用时间：\n" + getDurationString(usedAt));
       }
       couponView.setText(stringBuilder.toString());
   }
 
   public void setCouponText(String text){
       couponView.setText(text);
+  }
+
+  private String getDurationString(Date date){
+      Date dateNow = Calendar.getInstance().getTime();
+      long duration = dateNow.getTime() - date.getTime();
+      long second = duration / 1000;
+      if(second < 5){
+          return "现在";
+      }
+      if(second < 60){
+          return second + "秒前";
+      }
+      long minutes = second / 60;
+      if(minutes < 60) {
+          return minutes + "分钟前";
+      }
+      long hour = minutes / 60;
+      if(hour < 24){
+          return hour + "小时前";
+      }
+      long day = hour / 24;
+      hour = hour - day * 24;
+      if(hour > 0){
+          return day + "天" + hour + "小时前";
+      }else{
+          return day + "天前";
+      }
   }
 
   @Override

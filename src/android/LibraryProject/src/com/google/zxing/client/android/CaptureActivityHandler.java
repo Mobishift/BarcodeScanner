@@ -141,13 +141,16 @@ public final class CaptureActivityHandler extends Handler {
                     switch (retrofitError.getKind()){
                         case NETWORK:
                             Toast.makeText(activity, "请检查网络链接", Toast.LENGTH_SHORT).show();
+                            activity.setCouponText("请检查网络链接");
                             break;
                         case HTTP:
                             int status = retrofitError.getResponse().getStatus();
                             if(status == 404){
                                 Toast.makeText(activity, "该优惠券非本停车场优惠券", Toast.LENGTH_SHORT).show();
+                                activity.setCouponText("该优惠券非本停车场优惠券");
                             }else{
                                 Toast.makeText(activity, "发生错误:" + status, Toast.LENGTH_SHORT).show();
+                                activity.setCouponText("发生错误:" + status);
                             }
                             break;
                         case UNEXPECTED:
@@ -155,6 +158,7 @@ public final class CaptureActivityHandler extends Handler {
     //                        Log.d("UNEXPECTED", retrofitError.getResponse().getStatus() + "");
     //                        Log.d("UNEXPECTED", retrofitError.getResponse().getReason());
                             Toast.makeText(activity, "未知错误:" + retrofitError.getMessage() , Toast.LENGTH_SHORT).show();
+                            activity.setCouponText("未知错误:" + retrofitError.getMessage());
                             break;
                     }
                     restartPreviewAndDecode();
