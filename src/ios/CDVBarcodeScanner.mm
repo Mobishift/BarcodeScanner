@@ -211,13 +211,38 @@
                         content = [content stringByAppendingString: @"优惠券有效\n"];
                         date = [NSDate date];
                     }
-                    
-                    content = [content stringByAppendingFormat: @"价值：%@元\n", [dic objectForKey:@"origin_price"]];
+                    content = [content stringByAppendingFormat: @"优惠卷价格：%@\n", [dic objectForKey:@"origin_price"]];
                     if(date != nil){
-                        NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
-                        [dateFormatter setDateFormat: @"yyyy年MM月dd日 HH:mm"];
-                        content = [content stringByAppendingFormat: @"使用时间:%@", [dateFormatter stringFromDate: date]];
-                        [dateFormatter release];
+                        content = [content stringByAppendingString:@"使用时间："];
+                        long interval = -[date timeIntervalSinceNow];
+                        if(interval < 5){
+                            content = [content stringByAppendingString:@"现在"];
+                        }else if(interval < 60){
+                            content = [content stringByAppendingFormat:@"%ld秒前", interval];
+                        }else{
+                            long minute = interval / 60;
+                            if(minute < 60){
+                                content = [content stringByAppendingFormat:@"%ld分钟前", minute];
+                            }else{
+                                long hour = minute / 60;
+                                if(hour < 24){
+                                    content = [content stringByAppendingFormat:@"%ld小时前", hour];
+                                }else{
+                                    long day = hour / 24;
+                                    hour = hour - day *24;
+                                    if(hour >0){
+                                        content = [content stringByAppendingFormat:@"%ld天%ld小时前", day, hour];
+                                    }else{
+                                        content = [content stringByAppendingFormat:@"%ld天前", day];
+                                    }
+                                }
+                            }
+                        }
+                        content = [content stringByAppendingString:@"\n"];
+//                        NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+//                        [dateFormatter setDateFormat: @"yyyy年MM月dd日 HH:mm"];
+//                        content = [content stringByAppendingFormat: @"使用时间:%@", [dateFormatter stringFromDate: date]];
+//                        [dateFormatter release];
                     }
                     
                     scanner.viewController.uiLabel.text = content;
