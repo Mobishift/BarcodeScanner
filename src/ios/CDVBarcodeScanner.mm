@@ -196,6 +196,9 @@
                     NSDictionary *dic = (NSDictionary *) responseObject;
                     NSString *content = @"";
                     NSDate *date = nil;
+                    if([dic objectForKey:@"parkinglot_coupon_name"]){
+                        content = [content stringByAppendingFormat:@"%@\n", [dic objectForKey:@"parkinglot_coupon_name"]];
+                    }
                     if(![dic objectForKey: @"check"]){
                         
                         if([dic objectForKey: @"used_at"] != [NSNull null]){
