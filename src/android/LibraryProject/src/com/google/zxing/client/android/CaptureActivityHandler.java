@@ -129,7 +129,7 @@ public final class CaptureActivityHandler extends Handler {
                                 }
                             }
                         }
-                        activity.setCouponView(coupon.check, date, coupon.origin_price);
+                        activity.setCouponView(coupon.parkinglot_coupon_name, coupon.check, date, coupon.origin_price);
                     }else{
                         Toast.makeText(activity, "发生错误，请重新扫描", Toast.LENGTH_SHORT).show();
                     }

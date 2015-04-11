@@ -57,6 +57,7 @@ public class CouponRequest {
     }
 
     public final class Coupon{
+        public String parkinglot_coupon_name;
         public String parkinglot;
         public boolean check;
         public String used_at;

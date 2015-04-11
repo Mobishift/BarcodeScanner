@@ -288,9 +288,12 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     super.onPause();
   }
 
-  public void setCouponView(boolean check, Date usedAt, double originPrice){
+  public void setCouponView(String title, boolean check, Date usedAt, double originPrice){
 //      SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy年M月d日 HH:mm");
       StringBuilder stringBuilder = new StringBuilder();
+      if(title != null){
+          stringBuilder.append(title + "\n");
+      }
       if(!check){
           if(usedAt != null){
               stringBuilder.append("该优惠券已被使用\n");
