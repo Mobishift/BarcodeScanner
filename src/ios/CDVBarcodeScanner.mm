@@ -47,9 +47,12 @@
 // plugin class
 //------------------------------------------------------------------------------
 @interface CDVBarcodeScanner : CDVPlugin {}
+@property (nonatomic, retain) NSString*                 action;
+
 - (NSString*)isScanNotPossible;
 - (void)scan:(CDVInvokedUrlCommand*)command;
 - (void)encode:(CDVInvokedUrlCommand*)command;
+- (void)decode: (CDVInvokedUrlCommand*)command;
 - (void)returnSuccess:(NSString*)scannedText scanner:(CDVbcsProcessor*)scanner host:(NSString*)host parkinglotId:(NSString*)parkinglotId format:(NSString*)format cancelled:(BOOL)cancelled flipped:(BOOL)flipped callback:(NSString*)callback;
 - (void)returnError:(NSString*)message callback:(NSString*)callback;
 @end
@@ -73,6 +76,7 @@
 @property (nonatomic, retain) NSString*                   parkinglotId;
 @property (nonatomic)         BOOL                        isFrontCamera;
 @property (nonatomic)         BOOL                        isFlipped;
+@property (nonatomic)         BOOL                        isDecode;
 
 
 - (id)initWithPlugin:(CDVBarcodeScanner*)plugin callback:(NSString*)callback host:(NSString*)host parkinglotId:(NSString*)parkinglotId parentViewController:(UIViewController*)parentViewController alterateOverlayXib:(NSString *)alternateXib;
@@ -115,6 +119,7 @@
 // plugin class
 //------------------------------------------------------------------------------
 @implementation CDVBarcodeScanner
+@synthesize action              = _action;
 
 //--------------------------------------------------------------------------
 - (NSString*)isScanNotPossible {
@@ -137,6 +142,7 @@
     NSMutableDictionary* options = [command.arguments objectAtIndex:0];
     NSString* host = [options objectForKey:@"host"];
     NSString* parkinglotId = [options objectForKey:@"parkinglotId"];
+    self.action = @"scan";
     
     callback = command.callbackId;
     
@@ -160,6 +166,7 @@
                  parkinglotId:parkinglotId
                  parentViewController:self.viewController
                  alterateOverlayXib:overlayXib
+                 isDecode:false
                  ];
     [processor retain];
     [processor retain];
@@ -173,98 +180,148 @@
     [self returnError:@"encode function not supported" callback:command.callbackId];
 }
 
+-(void)decode:(CDVInvokedUrlCommand *)command{
+    CDVbcsProcessor* processor;
+    NSString*       callback;
+    NSString*       capabilityError;
+    
+    callback = command.callbackId;
+    
+    // We allow the user to define an alternate xib file for loading the overlay.
+    NSString *overlayXib = nil;
+    if ( [command.arguments count] >= 1 )
+    {
+        overlayXib = [command.arguments objectAtIndex:0];
+    }
+    
+    self.action = @"decode";
+    
+    capabilityError = [self isScanNotPossible];
+    if (capabilityError) {
+        [self returnError:capabilityError callback:callback];
+        return;
+    }
+    
+    processor = [[CDVbcsProcessor alloc]
+                 initWithPlugin:self
+                 callback:callback
+                 host:nil
+                 parkinglotId:nil
+                 parentViewController:self.viewController
+                 alterateOverlayXib:overlayXib
+                 isDecode:true
+                 ];
+    [processor retain];
+    [processor retain];
+    [processor retain];
+    // queue [processor scanBarcode] to run on the event loop
+    [processor performSelector:@selector(scanBarcode) withObject:nil afterDelay:0];
+}
+
 //--------------------------------------------------------------------------
 - (void)returnSuccess:(NSString*)scannedText scanner:(CDVbcsProcessor*)scanner host:(NSString *)host parkinglotId:(NSString *)parkinglotId format:(NSString *)format cancelled:(BOOL)cancelled flipped:(BOOL)flipped callback:(NSString *)callback{
     if (!cancelled){
-        NSArray *scannedTextArray = [scannedText componentsSeparatedByString:@"parkinglotcouponuser="];
-        if ([scannedTextArray count] == 2) {
-            NSString *res = [scannedTextArray objectAtIndex: 1];
-            NSArray *resArray = [res componentsSeparatedByString:@"__"];
-            if ([resArray count] == 2) {
-                NSString *parkinglotcouponuserPk = [resArray objectAtIndex:0];
-                NSString *code = [resArray objectAtIndex:1];
-                NSString *url = [NSString stringWithFormat:@"%@/parking/parkinglotcouponusers/%@/parkinglot/%@/code/%@/check", host, parkinglotcouponuserPk, parkinglotId, code];
-
-                scanner.viewController.uiLabel.text = @"请求中...";
-                HttpManager *manager = [HttpManager sharedClient];
-                manager.responseSerializer = [AFJSONResponseSerializer serializer];
-                [manager POST:url parameters:nil success:^(AFHTTPRequestOperation *operation, id responseObject) {
-                    NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
-                    [dictionary setObject:[NSNumber numberWithInt:operation.response.statusCode] forKey:@"status"];
-                    [dictionary setObject:responseObject forKey:@"data"];
+        if([self.action isEqualToString:@"action"]){
+            NSArray *scannedTextArray = [scannedText componentsSeparatedByString:@"parkinglotcouponuser="];
+            if ([scannedTextArray count] == 2) {
+                NSString *res = [scannedTextArray objectAtIndex: 1];
+                NSArray *resArray = [res componentsSeparatedByString:@"__"];
+                if ([resArray count] == 2) {
+                    NSString *parkinglotcouponuserPk = [resArray objectAtIndex:0];
+                    NSString *code = [resArray objectAtIndex:1];
+                    NSString *url = [NSString stringWithFormat:@"%@/parking/parkinglotcouponusers/%@/parkinglot/%@/code/%@/check", host, parkinglotcouponuserPk, parkinglotId, code];
                     
-                    NSDictionary *dic = (NSDictionary *) responseObject;
-                    NSString *content = @"";
-                    NSDate *date = nil;
-                    if([dic objectForKey:@"parkinglot_coupon_name"]){
-                        content = [content stringByAppendingFormat:@"%@\n", [dic objectForKey:@"parkinglot_coupon_name"]];
-                    }
-                    if(![dic objectForKey: @"check"]){
+                    scanner.viewController.uiLabel.text = @"请求中...";
+                    HttpManager *manager = [HttpManager sharedClient];
+                    manager.responseSerializer = [AFJSONResponseSerializer serializer];
+                    [manager POST:url parameters:nil success:^(AFHTTPRequestOperation *operation, id responseObject) {
+                        NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
+                        [dictionary setObject:[NSNumber numberWithInt:operation.response.statusCode] forKey:@"status"];
+                        [dictionary setObject:responseObject forKey:@"data"];
                         
-                        if([dic objectForKey: @"used_at"] != [NSNull null]){
-                            content = [content stringByAppendingString: @"该优惠券已被使用\n"];
-                            NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
-                            [dateFormatter setDateFormat: @"yyyy-MM-dd'T'HH:mm:ss.SSS"];
-                            date = [dateFormatter dateFromString: [dic objectForKey: @"used_at"]];
-                            [dateFormatter release];
-                        }else{
-                            content = [content stringByAppendingString: @"该优惠券已过期\n"];
+                        NSDictionary *dic = (NSDictionary *) responseObject;
+                        NSString *content = @"";
+                        NSDate *date = nil;
+                        if([dic objectForKey:@"parkinglot_coupon_name"]){
+                            content = [content stringByAppendingFormat:@"%@\n", [dic objectForKey:@"parkinglot_coupon_name"]];
                         }
-                    }else{
-                        content = [content stringByAppendingString: @"优惠券有效\n"];
-                        date = [NSDate date];
-                    }
-                    content = [content stringByAppendingFormat: @"优惠卷价格：%@\n", [dic objectForKey:@"origin_price"]];
-                    if(date != nil){
-                        content = [content stringByAppendingString:@"使用时间："];
-                        long interval = -[date timeIntervalSinceNow];
-                        if(interval < 5){
-                            content = [content stringByAppendingString:@"现在"];
-                        }else if(interval < 60){
-                            content = [content stringByAppendingFormat:@"%ld秒前", interval];
-                        }else{
-                            long minute = interval / 60;
-                            if(minute < 60){
-                                content = [content stringByAppendingFormat:@"%ld分钟前", minute];
+                        if(![dic objectForKey: @"check"]){
+                            
+                            if([dic objectForKey: @"used_at"] != [NSNull null]){
+                                content = [content stringByAppendingString: @"该优惠券已被使用\n"];
+                                NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+                                [dateFormatter setDateFormat: @"yyyy-MM-dd'T'HH:mm:ss.SSS"];
+                                date = [dateFormatter dateFromString: [dic objectForKey: @"used_at"]];
+                                [dateFormatter release];
                             }else{
-                                long hour = minute / 60;
-                                if(hour < 24){
-                                    content = [content stringByAppendingFormat:@"%ld小时前", hour];
+                                content = [content stringByAppendingString: @"该优惠券已过期\n"];
+                            }
+                        }else{
+                            content = [content stringByAppendingString: @"优惠券有效\n"];
+                            date = [NSDate date];
+                        }
+                        content = [content stringByAppendingFormat: @"优惠卷价格：%@\n", [dic objectForKey:@"origin_price"]];
+                        if(date != nil){
+                            content = [content stringByAppendingString:@"使用时间："];
+                            long interval = -[date timeIntervalSinceNow];
+                            if(interval < 5){
+                                content = [content stringByAppendingString:@"现在"];
+                            }else if(interval < 60){
+                                content = [content stringByAppendingFormat:@"%ld秒前", interval];
+                            }else{
+                                long minute = interval / 60;
+                                if(minute < 60){
+                                    content = [content stringByAppendingFormat:@"%ld分钟前", minute];
                                 }else{
-                                    long day = hour / 24;
-                                    hour = hour - day *24;
-                                    if(hour >0){
-                                        content = [content stringByAppendingFormat:@"%ld天%ld小时前", day, hour];
+                                    long hour = minute / 60;
+                                    if(hour < 24){
+                                        content = [content stringByAppendingFormat:@"%ld小时前", hour];
                                     }else{
-                                        content = [content stringByAppendingFormat:@"%ld天前", day];
+                                        long day = hour / 24;
+                                        hour = hour - day *24;
+                                        if(hour >0){
+                                            content = [content stringByAppendingFormat:@"%ld天%ld小时前", day, hour];
+                                        }else{
+                                            content = [content stringByAppendingFormat:@"%ld天前", day];
+                                        }
                                     }
                                 }
                             }
+                            content = [content stringByAppendingString:@"\n"];
                         }
-                        content = [content stringByAppendingString:@"\n"];
-//                        NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
-//                        [dateFormatter setDateFormat: @"yyyy年MM月dd日 HH:mm"];
-//                        content = [content stringByAppendingFormat: @"使用时间:%@", [dateFormatter stringFromDate: date]];
-//                        [dateFormatter release];
-                    }
-                    
-                    scanner.viewController.uiLabel.text = content;
-                    
-                } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
-                    if(operation.response != nil && operation.response.statusCode == 404){
-                        scanner.viewController.uiLabel.text = @"该优惠券非本停车场优惠券";
-                    }else{
-                        NSString *string = @"发生错误：";
-                        string = [string stringByAppendingFormat: @"%d，请重新打开扫码", error.code];
                         
-                        scanner.viewController.uiLabel.text = string;
-                    }
-                }];
+                        scanner.viewController.uiLabel.text = content;
+                        
+                    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+                        if(operation.response != nil && operation.response.statusCode == 404){
+                            scanner.viewController.uiLabel.text = @"该优惠券非本停车场优惠券";
+                        }else{
+                            NSString *string = @"发生错误：";
+                            string = [string stringByAppendingFormat: @"%d，请重新打开扫码", error.code];
+                            
+                            scanner.viewController.uiLabel.text = string;
+                        }
+                    }];
+                }else{
+                    scanner.viewController.uiLabel.text = @"二维码非法";
+                }
             }else{
                 scanner.viewController.uiLabel.text = @"二维码非法";
             }
-        }else{
-            scanner.viewController.uiLabel.text = @"二维码非法";
+
+        }else if([self.action isEqualToString:@"decode"]){
+            NSNumber* cancelledNumber = [NSNumber numberWithInt:(cancelled?1:0)];
+            
+            NSMutableDictionary* resultDict = [[NSMutableDictionary alloc] init];
+            [resultDict setObject:scannedText     forKey:@"text"];
+            [resultDict setObject:format          forKey:@"format"];
+            [resultDict setObject:cancelledNumber forKey:@"cancelled"];
+            
+            CDVPluginResult* result = [CDVPluginResult
+                                       resultWithStatus: CDVCommandStatus_OK
+                                       messageAsDictionary: resultDict
+                                       ];
+            [self.commandDelegate sendPluginResult:result callbackId:callback];
         }
     }
 }
@@ -301,6 +358,7 @@
 @synthesize resText              = _resText;
 @synthesize host                 = _host;
 @synthesize parkinglotId         = _parkinglotId;
+@synthesize isDecode             = _isDecode;
 
 //--------------------------------------------------------------------------
 - (id)initWithPlugin:(CDVBarcodeScanner*)plugin
@@ -308,7 +366,8 @@
                 host:(NSString*)host
         parkinglotId:(NSString*)parkinglotId
 parentViewController:(UIViewController*)parentViewController
-  alterateOverlayXib:(NSString *)alternateXib {
+  alterateOverlayXib:(NSString *)alternateXib
+            isDecode:(BOOL)isDecode{
     self = [super init];
     if (!self) return self;
     
@@ -318,6 +377,7 @@ parentViewController:(UIViewController*)parentViewController
     self.parkinglotId         = parkinglotId;
     self.parentViewController = parentViewController;
     self.alternateXib         = alternateXib;
+    self.isDecode             = isDecode;
     
     self.is1D      = YES;
     self.is2D      = YES;
@@ -388,6 +448,9 @@ parentViewController:(UIViewController*)parentViewController
 
 //--------------------------------------------------------------------------
 - (void)barcodeScanSucceeded:(NSString*)text format:(NSString*)format {
+    if(self.isDecode){
+        [self barcodeScanDone];
+    }
 //     [self barcodeScanDone];
     if (![self.resText isEqualToString:text]) {
         self.resText = text;
