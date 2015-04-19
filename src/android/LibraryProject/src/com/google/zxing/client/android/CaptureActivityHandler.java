@@ -36,6 +36,7 @@ import android.widget.Toast;
 
 import com.google.zxing.FakeR;
 import com.mobishift.http.CouponRequest;
+import com.phonegap.plugins.barcodescanner.BarcodeScanner;
 
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -55,7 +56,6 @@ import retrofit.client.Response;
 public final class CaptureActivityHandler extends Handler {
 
   private static final String TAG = CaptureActivityHandler.class.getSimpleName();
-
   private final CaptureActivity activity;
   private final DecodeThread decodeThread;
   private State state;
@@ -108,7 +108,11 @@ public final class CaptureActivityHandler extends Handler {
 //        activity.setResult(Activity.RESULT_OK, (Intent) message.obj);
         Intent intent = (Intent) message.obj;
         String url = intent.getStringExtra("SCAN_RESULT");
-        if(!handleText.equals(url)){
+        if(activity.getRequestCode() == BarcodeScanner.DECODE_CODE){
+            Log.d(TAG, "Got return scan result message");
+            activity.setResult(Activity.RESULT_OK, (Intent) message.obj);
+            activity.finish();
+        }else if(activity.getRequestCode() == BarcodeScanner.REQUEST_CODE && !handleText.equals(url)){
             handleText = url;
             activity.setCouponText("请求中...");
             CouponRequest couponRequest = CouponRequest.getCouponRequest();
@@ -154,10 +158,7 @@ public final class CaptureActivityHandler extends Handler {
                             }
                             break;
                         case UNEXPECTED:
-    //                        Log.d("UNEXPECTED", retrofitError.getUrl());
-    //                        Log.d("UNEXPECTED", retrofitError.getResponse().getStatus() + "");
-    //                        Log.d("UNEXPECTED", retrofitError.getResponse().getReason());
-                            Toast.makeText(activity, "未知错误:" + retrofitError.getMessage() , Toast.LENGTH_SHORT).show();
+                            Toast.makeText(activity, "未知错误:" + retrofitError.getMessage(), Toast.LENGTH_SHORT).show();
                             activity.setCouponText("未知错误:" + retrofitError.getMessage());
                             break;
                     }

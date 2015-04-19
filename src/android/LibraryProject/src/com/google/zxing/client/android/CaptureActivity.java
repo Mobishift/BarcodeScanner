@@ -62,6 +62,7 @@ import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.google.zxing.FakeR;
+import com.phonegap.plugins.barcodescanner.BarcodeScanner;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
@@ -126,6 +127,11 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
   private HistoryManager historyManager;
   private InactivityTimer inactivityTimer;
   private BeepManager beepManager;
+  private int requestCode;
+
+  public int getRequestCode() {
+      return requestCode;
+  }
 
   ViewfinderView getViewfinderView() {
     return viewfinderView;
@@ -154,9 +160,8 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     historyManager.trimHistory();
     inactivityTimer = new InactivityTimer(this);
     beepManager = new BeepManager(this);
-
+    requestCode = this.getIntent().getIntExtra("requestCode", BarcodeScanner.REQUEST_CODE);
     PreferenceManager.setDefaultValues(this, fakeR.getId("xml", "preferences"), false);
-
     //showHelpOnFirstLaunch();
   }
 

@@ -27,10 +27,12 @@ import org.apache.cordova.PluginResult;
  */
 public class BarcodeScanner extends CordovaPlugin {
     public static final int REQUEST_CODE = 0x0ba7c0de;
+    public static final int DECODE_CODE = 0x12345678;
     public static String HOST_URL = "";
     public static String PARKINGLOT = "";
 
     private static final String SCAN = "scan";
+    private static final String DECODE = "decode";
     private static final String ENCODE = "encode";
     private static final String CANCELLED = "cancelled";
     private static final String FORMAT = "format";
@@ -115,6 +117,8 @@ public class BarcodeScanner extends CordovaPlugin {
             }else{
                 callbackContext.error("please input args");
             }
+        } else if(action.equals(DECODE)){
+            decode();
         } else {
             return false;
         }
@@ -129,8 +133,17 @@ public class BarcodeScanner extends CordovaPlugin {
         intentScan.addCategory(Intent.CATEGORY_DEFAULT);
         // avoid calling other phonegap apps
         intentScan.setPackage(this.cordova.getActivity().getApplicationContext().getPackageName());
-
+        intentScan.putExtra("requestCode", REQUEST_CODE);
         this.cordova.startActivityForResult((CordovaPlugin) this, intentScan, REQUEST_CODE);
+    }
+
+    public void decode(){
+        Intent intentScan = new Intent(SCAN_INTENT);
+        intentScan.addCategory(Intent.CATEGORY_DEFAULT);
+        // avoid calling other phonegap apps
+        intentScan.setPackage(this.cordova.getActivity().getApplicationContext().getPackageName());
+        intentScan.putExtra("requestCode", DECODE_CODE);
+        this.cordova.startActivityForResult((CordovaPlugin) this, intentScan, DECODE_CODE);
     }
 
     /**
@@ -143,7 +156,7 @@ public class BarcodeScanner extends CordovaPlugin {
      */
     @Override
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
-        if (requestCode == REQUEST_CODE) {
+        if (requestCode == DECODE_CODE) {
             if (resultCode == Activity.RESULT_OK) {
                 JSONObject obj = new JSONObject();
                 try {
