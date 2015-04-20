@@ -221,7 +221,7 @@
 //--------------------------------------------------------------------------
 - (void)returnSuccess:(NSString*)scannedText scanner:(CDVbcsProcessor*)scanner host:(NSString *)host parkinglotId:(NSString *)parkinglotId format:(NSString *)format cancelled:(BOOL)cancelled flipped:(BOOL)flipped callback:(NSString *)callback{
     if (!cancelled){
-        if([self.action isEqualToString:@"action"]){
+        if([self.action isEqualToString:@"scan"]){
             NSArray *scannedTextArray = [scannedText componentsSeparatedByString:@"parkinglotcouponuser="];
             if ([scannedTextArray count] == 2) {
                 NSString *res = [scannedTextArray objectAtIndex: 1];
