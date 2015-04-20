@@ -323,6 +323,13 @@
                                        ];
             [self.commandDelegate sendPluginResult:result callbackId:callback];
         }
+    }else{
+        CDVPluginResult* result = [CDVPluginResult
+                                   resultWithStatus: CDVCommandStatus_ERROR
+                                   messageAsDictionary: nil
+                                   ];
+        [self.commandDelegate sendPluginResult:result callbackId:callback];
+
     }
 }
 
