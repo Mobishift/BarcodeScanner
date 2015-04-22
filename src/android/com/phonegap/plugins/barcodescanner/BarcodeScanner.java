@@ -183,6 +183,8 @@ public class BarcodeScanner extends CordovaPlugin {
                 //this.error(new PluginResult(PluginResult.Status.ERROR), this.callback);
                 this.callbackContext.error("Unexpected error");
             }
+        } else if (resultCode == Activity.RESULT_CANCELED) {
+            this.callbackContext.error("cancel");
         }
     }
 
