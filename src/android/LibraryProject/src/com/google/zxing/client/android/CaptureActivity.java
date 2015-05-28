@@ -32,6 +32,7 @@ import com.google.zxing.client.android.share.ShareActivity;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
@@ -309,13 +310,52 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
       }
       stringBuilder.append("优惠券价值：" + originPrice + "\n");
       if(usedAt != null){
-          stringBuilder.append("使用时间：\n" + getDurationString(usedAt));
+          stringBuilder.append("使用时间：" + getDurationString(usedAt));
       }
       couponView.setText(stringBuilder.toString());
   }
 
   public void setCouponText(String text){
       couponView.setText(text);
+  }
+
+  public void showCouponDialog(String title,
+                               boolean check,
+                               Date usedAt,
+                               double originPrice,
+                               String desc,
+                               DialogInterface.OnClickListener okListener,
+                               DialogInterface.OnClickListener cancelListener){
+    StringBuilder stringBuilder = new StringBuilder();
+    if(title != null){
+      stringBuilder.append(title + "\n");
+    }
+    if(!check){
+      if(usedAt != null){
+        stringBuilder.append("该优惠券已被使用\n");
+      }else{
+        stringBuilder.append("该优惠券已过期\n");
+      }
+
+    }
+    stringBuilder.append("优惠券价值：" + originPrice + "\n");
+    if(usedAt != null && !check){
+      stringBuilder.append("使用时间：" + getDurationString(usedAt));
+    }
+    if(desc != null && desc.length() > 0){
+      stringBuilder.append("\n" + desc);
+    }
+    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+    builder.setTitle("优惠券");
+    builder.setMessage(stringBuilder.toString());
+    if(!check){
+      builder.setPositiveButton("确定", cancelListener);
+    }else{
+      builder.setPositiveButton("使用", okListener);
+      builder.setNegativeButton("取消", cancelListener);
+    }
+
+    builder.create().show();
   }
 
   private String getDurationString(Date date){
