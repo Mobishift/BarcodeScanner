@@ -323,8 +323,8 @@
                         }
                         
                         NSString* dialogString = [NSString stringWithString:content];
-                        if([dic objectForKey:@"desc"] && [[dic objectForKey:@"desc"] length] > 0){
-                            dialogString = [dialogString stringByAppendingFormat:@"\n%@", [dic objectForKey:@"desc"]];
+                        if([dic objectForKey:@"parkinglot_coupon_desc"] && [[dic objectForKey:@"parkinglot_coupon_desc"] length] > 0){
+                            dialogString = [dialogString stringByAppendingFormat:@"\n%@", [dic objectForKey:@"parkinglot_coupon_desc"]];
                         }
                         AlertView* alertView = nil;
                         if(![[dic objectForKey: @"check"] boolValue]){

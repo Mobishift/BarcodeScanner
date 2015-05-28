@@ -123,7 +123,7 @@ public final class CaptureActivityHandler extends Handler {
                             coupon.check,
                             coupon.getUsedAt(),
                             coupon.origin_price,
-                            coupon.desc,
+                            coupon.parkinglot_coupon_desc,
                             new DialogInterface.OnClickListener() {
                                 @Override
                                 public void onClick(DialogInterface dialog, int which) {

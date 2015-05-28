@@ -133,7 +133,7 @@ public class CouponRequest {
         public String used_at;
         public double price;
         public double origin_price;
-        public String desc;
+        public String parkinglot_coupon_desc;
 
         public Date getUsedAt(){
             Date date = null;
