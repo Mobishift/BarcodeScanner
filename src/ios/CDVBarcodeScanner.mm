@@ -33,6 +33,38 @@
 
 @end
 
+@interface AlertView: UIAlertView<UIAlertViewDelegate>
+@property (copy, nonatomic) void (^completion)(BOOL, NSInteger);
+
+- (id)initWithTitle:(NSString *)title message:(NSString *)message cancelButtonTitle:(NSString *)cancelButtonTitle otherButtonTitles:(NSArray *)otherButtonTitles;
+
+@end
+
+@implementation AlertView
+    
+- (id)initWithTitle:(NSString *)title message:(NSString *)message cancelButtonTitle:(NSString *)cancelButtonTitle otherButtonTitles:(NSArray *)otherButtonTitles {
+    
+    self = [self initWithTitle:title message:message delegate:self cancelButtonTitle:cancelButtonTitle otherButtonTitles:nil];
+    
+    if (self) {
+        for (NSString *buttonTitle in otherButtonTitles) {
+            [self addButtonWithTitle:buttonTitle];
+        }
+    }
+    return self;
+}
+
+- (void)alertView:(UIAlertView *)alertView didDismissWithButtonIndex:(NSInteger)buttonIndex {
+    
+    if (self.completion) {
+        self.completion(buttonIndex==self.cancelButtonIndex, buttonIndex);
+        self.completion = nil;
+    }
+}
+
+
+@end
+
 //------------------------------------------------------------------------------
 // Adds a shutter button to the UI, and changes the scan from continuous to
 // only performing a scan when you click the shutter button.  For testing.
@@ -229,7 +261,7 @@
                 if ([resArray count] == 2) {
                     NSString *parkinglotcouponuserPk = [resArray objectAtIndex:0];
                     NSString *code = [resArray objectAtIndex:1];
-                    NSString *url = [NSString stringWithFormat:@"%@/parking/parkinglotcouponusers/%@/parkinglot/%@/code/%@/check", host, parkinglotcouponuserPk, parkinglotId, code];
+                    NSString *url = [NSString stringWithFormat:@"%@/parking/parkinglotcouponusers/%@/parkinglot/%@/code/%@/check?no_use=1", host, parkinglotcouponuserPk, parkinglotId, code];
                     
                     scanner.viewController.uiLabel.text = @"请求中...";
                     HttpManager *manager = [HttpManager sharedClient];
@@ -245,7 +277,7 @@
                         if([dic objectForKey:@"parkinglot_coupon_name"]){
                             content = [content stringByAppendingFormat:@"%@\n", [dic objectForKey:@"parkinglot_coupon_name"]];
                         }
-                        if(![dic objectForKey: @"check"]){
+                        if(![[dic objectForKey: @"check"] boolValue]){
                             
                             if([dic objectForKey: @"used_at"] != [NSNull null]){
                                 content = [content stringByAppendingString: @"该优惠券已被使用\n"];
@@ -257,11 +289,11 @@
                                 content = [content stringByAppendingString: @"该优惠券已过期\n"];
                             }
                         }else{
-                            content = [content stringByAppendingString: @"优惠券有效\n"];
+//                            content = [content stringByAppendingString: @"优惠券有效\n"];
                             date = [NSDate date];
                         }
                         content = [content stringByAppendingFormat: @"优惠卷价格：%@\n", [dic objectForKey:@"origin_price"]];
-                        if(date != nil){
+                        if(date != nil && ![[dic objectForKey: @"check"] boolValue]){
                             content = [content stringByAppendingString:@"使用时间："];
                             long interval = -[date timeIntervalSinceNow];
                             if(interval < 5){
@@ -290,7 +322,48 @@
                             content = [content stringByAppendingString:@"\n"];
                         }
                         
-                        scanner.viewController.uiLabel.text = content;
+                        NSString* dialogString = [NSString stringWithString:content];
+                        if([dic objectForKey:@"desc"] && [[dic objectForKey:@"desc"] length] > 0){
+                            dialogString = [dialogString stringByAppendingFormat:@"\n%@", [dic objectForKey:@"desc"]];
+                        }
+                        AlertView* alertView = nil;
+                        if(![[dic objectForKey: @"check"] boolValue]){
+                            alertView = [[AlertView alloc] initWithTitle:@"优惠券" message:dialogString cancelButtonTitle:@"取消" otherButtonTitles:nil];
+                            alertView.completion = ^(BOOL cancelled, NSInteger){
+                                scanner.viewController.uiLabel.text = @"初始化";
+                                scanner.resText = @"";
+                            };
+                        }else{
+                            alertView = [[AlertView alloc] initWithTitle:@"优惠券" message:dialogString cancelButtonTitle:@"取消" otherButtonTitles:@[@"使用"]];
+                            alertView.completion = ^(BOOL cancelled, NSInteger buttonIndex){
+                                if(!cancelled){
+                                    NSString* url = [NSString stringWithFormat:@"%@/parking/parkinglotcouponusers/%@/parkinglot/%@/code/%@/check", host, parkinglotcouponuserPk, parkinglotId, code];
+                                    HttpManager *manager = [HttpManager sharedClient];
+                                    manager.responseSerializer = [AFJSONResponseSerializer serializer];
+                                    [manager POST:url parameters:nil success:^(AFHTTPRequestOperation *operation, id responseObject) {
+                                        scanner.viewController.uiLabel.text = content;
+                                        scanner.resText = @"";
+                                    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+                                        if(operation.response != nil && operation.response.statusCode == 404){
+                                            scanner.viewController.uiLabel.text = @"该优惠券非本停车场优惠券";
+                                        }else{
+                                            NSString *string = @"发生错误：";
+                                            string = [string stringByAppendingFormat: @"%d，请重新打开扫码", error.code];
+                                            
+                                            scanner.viewController.uiLabel.text = string;
+                                        }
+                                        scanner.resText = @"";
+                                    }];
+                                }else{
+                                    scanner.viewController.uiLabel.text = @"初始化";
+                                    scanner.resText = @"";
+                                }
+                            };
+                        }
+                        
+                        [alertView show];
+
+//                        scanner.viewController.uiLabel.text = content;
                         
                     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
                         if(operation.response != nil && operation.response.statusCode == 404){
@@ -301,6 +374,7 @@
                             
                             scanner.viewController.uiLabel.text = string;
                         }
+                        scanner.resText = @"";
                     }];
                 }else{
                     scanner.viewController.uiLabel.text = @"二维码非法";
