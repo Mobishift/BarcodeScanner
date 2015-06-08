@@ -329,7 +329,7 @@
                         AlertView* alertView = nil;
                         if(![[dic objectForKey: @"check"] boolValue]){
                             alertView = [[AlertView alloc] initWithTitle:@"优惠券" message:dialogString cancelButtonTitle:@"取消" otherButtonTitles:nil];
-                            alertView.completion = ^(BOOL cancelled, NSInteger){
+                            alertView.completion = ^(BOOL cancelled, NSInteger index){
                                 scanner.viewController.uiLabel.text = @"初始化";
                                 scanner.resText = @"";
                             };
@@ -345,10 +345,15 @@
                                         scanner.resText = @"";
                                     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
                                         if(operation.response != nil && operation.response.statusCode == 404){
-                                            scanner.viewController.uiLabel.text = @"该优惠券非本停车场优惠券";
+                                            AlertView *alertView = [self showAlertDialog:@"该优惠券非本停车场优惠券"];
+                                            alertView.completion = ^(BOOL cancelled, NSInteger index){
+                                                scanner.viewController.uiLabel.text = @"初始化";
+                                                scanner.resText = @"";
+                                            };
+                                            [alertView show];
                                         }else{
                                             NSString *string = @"发生错误：";
-                                            string = [string stringByAppendingFormat: @"%d，请重新打开扫码", error.code];
+                                            string = [string stringByAppendingFormat: @"%ld，请重新打开扫码", (long)error.code];
                                             
                                             scanner.viewController.uiLabel.text = string;
                                         }
@@ -367,20 +372,36 @@
                         
                     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
                         if(operation.response != nil && operation.response.statusCode == 404){
-                            scanner.viewController.uiLabel.text = @"该优惠券非本停车场优惠券";
+                            AlertView *alertView = [self showAlertDialog:@"该优惠券非本停车场优惠券"];
+                            alertView.completion = ^(BOOL cancelled, NSInteger index){
+                                scanner.viewController.uiLabel.text = @"初始化";
+                                scanner.resText = @"";
+                            };
+
                         }else{
                             NSString *string = @"发生错误：";
-                            string = [string stringByAppendingFormat: @"%d，请重新打开扫码", error.code];
+                            string = [string stringByAppendingFormat: @"%ld，请重新打开扫码", (long)error.code];
                             
                             scanner.viewController.uiLabel.text = string;
                         }
                         scanner.resText = @"";
                     }];
                 }else{
-                    scanner.viewController.uiLabel.text = @"二维码非法";
+                    AlertView *alertView = [self showAlertDialog:@"二维码不可用"];
+                    alertView.completion = ^(BOOL cancelled, NSInteger index){
+                        scanner.viewController.uiLabel.text = @"初始化";
+                        scanner.resText = @"";
+                    };
+
+                    [alertView show];
                 }
             }else{
-                scanner.viewController.uiLabel.text = @"二维码非法";
+                AlertView *alertView = [self showAlertDialog:@"二维码不可用"];
+                alertView.completion = ^(BOOL cancelled, NSInteger index){
+                    scanner.viewController.uiLabel.text = @"初始化";
+                    scanner.resText = @"";
+                };
+                [alertView show];
             }
 
         }else if([self.action isEqualToString:@"decode"]){
@@ -405,6 +426,11 @@
         [self.commandDelegate sendPluginResult:result callbackId:callback];
 
     }
+}
+
+- (AlertView*)showAlertDialog:(NSString*)message {
+    AlertView *alertView = [[AlertView alloc] initWithTitle:@"验证优惠券" message:message cancelButtonTitle:@"确定" otherButtonTitles:nil];
+    return alertView;
 }
 
 //--------------------------------------------------------------------------
@@ -994,57 +1020,57 @@ parentViewController:(UIViewController*)parentViewController
     overlayView.autoresizesSubviews = YES;
     overlayView.autoresizingMask    = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     overlayView.opaque              = NO;
-    
-    UIToolbar* toolbar = [[[UIToolbar alloc] init] autorelease];
-    toolbar.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin;
-    
-    id cancelButton = [[[UIBarButtonItem alloc] autorelease]
-                       initWithBarButtonSystemItem:UIBarButtonSystemItemCancel
-                       target:(id)self
-                       action:@selector(cancelButtonPressed:)
-                       ];
-    
-    
-    id flexSpace = [[[UIBarButtonItem alloc] autorelease]
-                    initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace
-                    target:nil
-                    action:nil
-                    ];
-    
-    id flipCamera = [[[UIBarButtonItem alloc] autorelease]
-                       initWithBarButtonSystemItem:UIBarButtonSystemItemCamera
-                       target:(id)self
-                       action:@selector(flipCameraButtonPressed:)
-                       ];
-
-    
-#if USE_SHUTTER
-    id shutterButton = [[UIBarButtonItem alloc]
-                        initWithBarButtonSystemItem:UIBarButtonSystemItemCamera
-                        target:(id)self
-                        action:@selector(shutterButtonPressed)
-                        ];
-    
-    toolbar.items = [NSArray arrayWithObjects:flexSpace,cancelButton,flexSpace, flipCamera ,shutterButton,nil];
-#else
-    toolbar.items = [NSArray arrayWithObjects:flexSpace,cancelButton,flexSpace, flipCamera,nil];
-#endif
-    bounds = overlayView.bounds;
-    
-    [toolbar sizeToFit];
-    CGFloat toolbarHeight  = [toolbar frame].size.height;
+//    
+//    UIToolbar* toolbar = [[[UIToolbar alloc] init] autorelease];
+//    toolbar.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin;
+//    
+//    id cancelButton = [[[UIBarButtonItem alloc] autorelease]
+//                       initWithBarButtonSystemItem:UIBarButtonSystemItemCancel
+//                       target:(id)self
+//                       action:@selector(cancelButtonPressed:)
+//                       ];
+//    
+//    
+//    id flexSpace = [[[UIBarButtonItem alloc] autorelease]
+//                    initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace
+//                    target:nil
+//                    action:nil
+//                    ];
+//    
+//    id flipCamera = [[[UIBarButtonItem alloc] autorelease]
+//                       initWithBarButtonSystemItem:UIBarButtonSystemItemCamera
+//                       target:(id)self
+//                       action:@selector(flipCameraButtonPressed:)
+//                       ];
+//
+//    
+//#if USE_SHUTTER
+//    id shutterButton = [[UIBarButtonItem alloc]
+//                        initWithBarButtonSystemItem:UIBarButtonSystemItemCamera
+//                        target:(id)self
+//                        action:@selector(shutterButtonPressed)
+//                        ];
+//    
+//    toolbar.items = [NSArray arrayWithObjects:flexSpace,cancelButton,flexSpace, flipCamera ,shutterButton,nil];
+//#else
+//    toolbar.items = [NSArray arrayWithObjects:flexSpace,cancelButton,flexSpace, flipCamera,nil];
+//#endif
+//    bounds = overlayView.bounds;
+//    
+//    [toolbar sizeToFit];
+//    CGFloat toolbarHeight  = [toolbar frame].size.height;
     CGFloat rootViewHeight = CGRectGetHeight(bounds);
     CGFloat rootViewWidth  = CGRectGetWidth(bounds);
-    CGRect  rectArea       = CGRectMake(0, rootViewHeight - toolbarHeight, rootViewWidth, toolbarHeight);
-    [toolbar setFrame:rectArea];
+//    CGRect  rectArea       = CGRectMake(0, rootViewHeight - toolbarHeight, rootViewWidth, toolbarHeight);
+//    [toolbar setFrame:rectArea];
     
-    [overlayView addSubview: toolbar];
+//    [overlayView addSubview: toolbar];
     
     UIImage* reticleImage = [self buildReticleImage];
     UIView* reticleView = [[[UIImageView alloc] initWithImage: reticleImage] autorelease];
     CGFloat minAxis = MIN(rootViewHeight, rootViewWidth);
     
-    rectArea = CGRectMake(
+    CGRect rectArea = CGRectMake(
                           0.5 * (rootViewWidth  - minAxis),
                           0.5 * (rootViewHeight - minAxis),
                           minAxis,
@@ -1064,7 +1090,7 @@ parentViewController:(UIViewController*)parentViewController
     
     [overlayView addSubview: reticleView];
     
-    self.uiLabel = [[[UILabel alloc] initWithFrame: CGRectMake(30, 40, rootViewWidth - 2 * 30, 120)] autorelease];
+    self.uiLabel = [[[UILabel alloc] initWithFrame: CGRectMake(30, 80, rootViewWidth - 2 * 30, 120)] autorelease];
     self.uiLabel.textAlignment = NSTextAlignmentCenter;
     self.uiLabel.backgroundColor = [UIColor colorWithRed: 0 green: 0 blue: 0 alpha:0.6];
     self.uiLabel.textColor = [UIColor whiteColor];
@@ -1074,6 +1100,14 @@ parentViewController:(UIViewController*)parentViewController
     
     [overlayView addSubview: self.uiLabel];
     
+    UIButton* button = [[[UIButton alloc] initWithFrame: CGRectMake(10, 20, 40, 30)] autorelease];
+    [button setTitle:@"取消" forState:UIControlStateNormal];
+    [button setTitleColor:[UIColor colorWithWhite:255 alpha:255] forState:UIControlStateNormal];
+    button.backgroundColor = [UIColor colorWithRed:0 green:0 blue:0 alpha:0];
+    
+    [button addTarget:(id)self action:@selector(cancelButtonPressed:) forControlEvents:UIControlEventTouchDown];
+    [overlayView addSubview:button];
+    
     return overlayView;
 }
 
@@ -1081,7 +1115,7 @@ parentViewController:(UIViewController*)parentViewController
 
 #define RETICLE_SIZE    500.0f
 #define RETICLE_WIDTH    5.0f
-#define RETICLE_OFFSET   60.0f
+#define RETICLE_OFFSET   120.0f
 #define RETICLE_ALPHA     0.4f
 
 //-------------------------------------------------------------------------
@@ -1107,6 +1141,7 @@ parentViewController:(UIViewController*)parentViewController
         UIColor* color = [UIColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:RETICLE_ALPHA];
         CGContextSetStrokeColorWithColor(context, color.CGColor);
         CGContextSetLineWidth(context, RETICLE_WIDTH);
+        
         CGContextStrokeRect(context,
                             CGRectMake(
                                        RETICLE_OFFSET,

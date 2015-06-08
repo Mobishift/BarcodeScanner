@@ -180,6 +180,7 @@
         <source-file src="src/android/LibraryProject/res/values/colors.xml" target-dir="res/values"/>
         <source-file src="src/android/LibraryProject/res/values/dimens.xml" target-dir="res/values"/>
         <source-file src="src/android/LibraryProject/res/values/ids.xml" target-dir="res/values"/>
+        <source-file src="src/android/LibraryProject/res/values/style.xml" target-dir="res/values"/>
         <source-file src="src/android/LibraryProject/res/xml/preferences.xml" target-dir="res/xml"/>
 
         <!-- plugman cannot merge - prepare manual merge -->

@@ -32,6 +32,7 @@ import com.google.zxing.client.android.share.ShareActivity;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -40,6 +41,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.net.Uri;
 import android.os.Bundle;
@@ -49,6 +51,7 @@ import android.preference.PreferenceManager;
 import android.text.ClipboardManager;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.ContextThemeWrapper;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -59,6 +62,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -325,7 +329,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
                                double originPrice,
                                String desc,
                                DialogInterface.OnClickListener okListener,
-                               DialogInterface.OnClickListener cancelListener){
+                               DialogInterface.OnDismissListener disminssListener){
     StringBuilder stringBuilder = new StringBuilder();
     if(title != null){
       stringBuilder.append(title + "\n");
@@ -334,7 +338,8 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
       if(usedAt != null){
         stringBuilder.append("该优惠券已被使用\n");
       }else{
-        stringBuilder.append("该优惠券已过期\n");
+        this.showDialog("该优惠券已过期", disminssListener);
+        return;
       }
 
     }
@@ -348,6 +353,13 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     AlertDialog.Builder builder = new AlertDialog.Builder(this);
     builder.setTitle("优惠券");
     builder.setMessage(stringBuilder.toString());
+    DialogInterface.OnClickListener cancelListener = new DialogInterface.OnClickListener() {
+      @Override
+      public void onClick(DialogInterface dialog, int which) {
+        dialog.dismiss();
+      }
+    };
+    builder.setOnDismissListener(disminssListener);
     if(!check){
       builder.setPositiveButton("确定", cancelListener);
     }else{
@@ -355,7 +367,44 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
       builder.setNegativeButton("取消", cancelListener);
     }
 
-    builder.create().show();
+    AlertDialog dialog ＝ builder.create();
+    dialog.show();
+    Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+    positiveButton.setBackgroundColor(Color.rgb(0xFF, 0x58, 0x4e));
+    positiveButton.setTextColor(Color.WHITE);
+    int titleDividerId = this.getResources().getIdentifier("titleDivider", "id", "android");
+
+    View titleDivider = dialog.findViewById(titleDividerId);
+//    titleDivider.setLayoutParams(new ViewGroup.LayoutParams(100, 1));
+    titleDivider.setBackgroundColor(Color.rgb(0xcc, 0xcc, 0xcc));
+  }
+
+  public void showDialog(String message, DialogInterface.OnDismissListener disminssListener){
+    ContextThemeWrapper wrapper = new ContextThemeWrapper(this, fakeR.getId("style", "mbsAlertDialog"));
+//    ContextThemeWrapper wrapper = new ContextThemeWrapper(this, android.R.style.Theme_Holo_Light_Dialog);
+    AlertDialog.Builder builder = new AlertDialog.Builder(wrapper);
+    builder.setTitle("验证优惠券");
+    builder.setMessage(message);
+    DialogInterface.OnClickListener cancelListener = new DialogInterface.OnClickListener() {
+      @Override
+      public void onClick(DialogInterface dialog, int which) {
+        dialog.dismiss();
+      }
+    };
+    builder.setOnDismissListener(disminssListener);
+    builder.setPositiveButton("确定", cancelListener);
+    AlertDialog dialog =  builder.create();
+
+    dialog.show();
+    Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+    positiveButton.setBackgroundColor(Color.rgb(0xFF, 0x58, 0x4e));
+    positiveButton.setTextColor(Color.WHITE);
+    int titleDividerId = this.getResources().getIdentifier("titleDivider", "id", "android");
+
+    View titleDivider = dialog.findViewById(titleDividerId);
+//    titleDivider.setLayoutParams(new ViewGroup.LayoutParams(100, 1));
+    titleDivider.setBackgroundColor(Color.rgb(0xcc, 0xcc, 0xcc));
+
   }
 
   private String getDurationString(Date date){

@@ -109,6 +109,13 @@ public final class CaptureActivityHandler extends Handler {
 //        activity.setResult(Activity.RESULT_OK, (Intent) message.obj);
         Intent intent = (Intent) message.obj;
         final String url = intent.getStringExtra("SCAN_RESULT");
+        final DialogInterface.OnDismissListener dismissListener = new DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface dialog) {
+                activity.setCouponText("初始化");
+                restartPreviewAndDecode();
+            }
+        };
         if(activity.getRequestCode() == BarcodeScanner.DECODE_CODE){
             Log.d(TAG, "Got return scan result message");
             activity.setResult(Activity.RESULT_OK, (Intent) message.obj);
@@ -147,27 +154,16 @@ public final class CaptureActivityHandler extends Handler {
                                     });
                                 }
                             },
-                            new DialogInterface.OnClickListener() {
-                                @Override
-                                public void onClick(DialogInterface dialog, int which) {
-                                    dialog.dismiss();
-                                    activity.setCouponText("初始化");
-                                    restartPreviewAndDecode();
-                                }
-                            });
+                            dismissListener);
                 }
 
                 @Override
                 public void failure(String message) {
-                    Toast.makeText(activity, message, Toast.LENGTH_SHORT).show();
-                    activity.setCouponText(message);
-                    restartPreviewAndDecode();
+                    activity.showDialog(message, dismissListener);
                 }
             });
             if(!isCoupon){
-                Toast.makeText(activity, "二维码非法", Toast.LENGTH_SHORT).show();
-                activity.setCouponText("初始化");
-                restartPreviewAndDecode();
+                activity.showDialog("二维码不可用", dismissListener);
             }
         }else{
             restartPreviewAndDecode();
