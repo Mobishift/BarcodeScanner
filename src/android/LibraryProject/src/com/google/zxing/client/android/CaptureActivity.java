@@ -350,7 +350,8 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     if(desc != null && desc.length() > 0){
       stringBuilder.append("\n" + desc);
     }
-    AlertDialog.Builder builder = new AlertDialog.Builder(this);
+    ContextThemeWrapper wrapper = new ContextThemeWrapper(this, fakeR.getId("style", "mbsAlertDialog"));
+    AlertDialog.Builder builder = new AlertDialog.Builder(wrapper);
     builder.setTitle("优惠券");
     builder.setMessage(stringBuilder.toString());
     DialogInterface.OnClickListener cancelListener = new DialogInterface.OnClickListener() {
