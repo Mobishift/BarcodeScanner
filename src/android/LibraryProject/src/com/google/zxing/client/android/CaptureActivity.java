@@ -367,7 +367,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
       builder.setNegativeButton("取消", cancelListener);
     }
 
-    AlertDialog dialog ＝ builder.create();
+    AlertDialog dialog = builder.create();
     dialog.show();
     Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
     positiveButton.setBackgroundColor(Color.rgb(0xFF, 0x58, 0x4e));
