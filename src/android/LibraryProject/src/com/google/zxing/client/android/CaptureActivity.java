@@ -306,13 +306,13 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
       }
       if(!check){
           if(usedAt != null){
-              stringBuilder.append("该优惠券已被使用\n");
+              stringBuilder.append("该抵扣券已被使用\n");
           }else{
-              stringBuilder.append("该优惠券已过期\n");
+              stringBuilder.append("该抵扣券已过期\n");
           }
 
       }
-      stringBuilder.append("优惠券价值：" + originPrice + "\n");
+      stringBuilder.append("抵扣券价值：" + originPrice + "\n");
       if(usedAt != null){
           stringBuilder.append("使用时间：" + getDurationString(usedAt));
       }
@@ -336,14 +336,14 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     }
     if(!check){
       if(usedAt != null){
-        stringBuilder.append("该优惠券已被使用\n");
+        stringBuilder.append("该抵扣券已被使用\n");
       }else{
-        this.showDialog("该优惠券已过期", disminssListener);
+        this.showDialog("该抵扣券已过期", disminssListener);
         return;
       }
 
     }
-    stringBuilder.append("优惠券价值：" + originPrice + "\n");
+    stringBuilder.append("抵扣券价值：" + originPrice + "\n");
     if(usedAt != null && !check){
       stringBuilder.append("使用时间：" + getDurationString(usedAt));
     }
@@ -352,7 +352,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     }
     ContextThemeWrapper wrapper = new ContextThemeWrapper(this, fakeR.getId("style", "mbsAlertDialog"));
     AlertDialog.Builder builder = new AlertDialog.Builder(wrapper);
-    builder.setTitle("优惠券");
+    builder.setTitle("抵扣券");
     builder.setMessage(stringBuilder.toString());
     DialogInterface.OnClickListener cancelListener = new DialogInterface.OnClickListener() {
       @Override
@@ -384,7 +384,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     ContextThemeWrapper wrapper = new ContextThemeWrapper(this, fakeR.getId("style", "mbsAlertDialog"));
 //    ContextThemeWrapper wrapper = new ContextThemeWrapper(this, android.R.style.Theme_Holo_Light_Dialog);
     AlertDialog.Builder builder = new AlertDialog.Builder(wrapper);
-    builder.setTitle("验证优惠券");
+    builder.setTitle("验证抵扣券");
     builder.setMessage(message);
     DialogInterface.OnClickListener cancelListener = new DialogInterface.OnClickListener() {
       @Override

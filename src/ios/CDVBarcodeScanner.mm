@@ -280,19 +280,19 @@
                         if(![[dic objectForKey: @"check"] boolValue]){
                             
                             if([dic objectForKey: @"used_at"] != [NSNull null]){
-                                content = [content stringByAppendingString: @"该优惠券已被使用\n"];
+                                content = [content stringByAppendingString: @"该抵扣券已被使用\n"];
                                 NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
                                 [dateFormatter setDateFormat: @"yyyy-MM-dd'T'HH:mm:ss.SSS"];
                                 date = [dateFormatter dateFromString: [dic objectForKey: @"used_at"]];
                                 [dateFormatter release];
                             }else{
-                                content = [content stringByAppendingString: @"该优惠券已过期\n"];
+                                content = [content stringByAppendingString: @"该抵扣券已过期\n"];
                             }
                         }else{
-//                            content = [content stringByAppendingString: @"优惠券有效\n"];
+//                            content = [content stringByAppendingString: @"抵扣券有效\n"];
                             date = [NSDate date];
                         }
-                        content = [content stringByAppendingFormat: @"优惠卷价格：%@\n", [dic objectForKey:@"origin_price"]];
+                        content = [content stringByAppendingFormat: @"抵扣券价格：%@\n", [dic objectForKey:@"origin_price"]];
                         if(date != nil && ![[dic objectForKey: @"check"] boolValue]){
                             content = [content stringByAppendingString:@"使用时间："];
                             long interval = -[date timeIntervalSinceNow];
@@ -328,13 +328,13 @@
                         }
                         AlertView* alertView = nil;
                         if(![[dic objectForKey: @"check"] boolValue]){
-                            alertView = [[AlertView alloc] initWithTitle:@"优惠券" message:dialogString cancelButtonTitle:@"取消" otherButtonTitles:nil];
+                            alertView = [[AlertView alloc] initWithTitle:@"抵扣券" message:dialogString cancelButtonTitle:@"取消" otherButtonTitles:nil];
                             alertView.completion = ^(BOOL cancelled, NSInteger index){
                                 scanner.viewController.uiLabel.text = @"初始化";
                                 scanner.resText = @"";
                             };
                         }else{
-                            alertView = [[AlertView alloc] initWithTitle:@"优惠券" message:dialogString cancelButtonTitle:@"取消" otherButtonTitles:@[@"使用"]];
+                            alertView = [[AlertView alloc] initWithTitle:@"抵扣券" message:dialogString cancelButtonTitle:@"取消" otherButtonTitles:@[@"使用"]];
                             alertView.completion = ^(BOOL cancelled, NSInteger buttonIndex){
                                 if(!cancelled){
                                     NSString* url = [NSString stringWithFormat:@"%@/parking/parkinglotcouponusers/%@/parkinglot/%@/code/%@/check", host, parkinglotcouponuserPk, parkinglotId, code];
@@ -345,7 +345,7 @@
                                         scanner.resText = @"";
                                     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
                                         if(operation.response != nil && operation.response.statusCode == 404){
-                                            AlertView *alertView = [self showAlertDialog:@"该优惠券非本停车场优惠券"];
+                                            AlertView *alertView = [self showAlertDialog:@"该抵扣券非本停车场抵扣券"];
                                             alertView.completion = ^(BOOL cancelled, NSInteger index){
                                                 scanner.viewController.uiLabel.text = @"初始化";
                                                 scanner.resText = @"";
@@ -372,7 +372,7 @@
                         
                     } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
                         if(operation.response != nil && operation.response.statusCode == 404){
-                            AlertView *alertView = [self showAlertDialog:@"该优惠券非本停车场优惠券"];
+                            AlertView *alertView = [self showAlertDialog:@"该抵扣券非本停车场抵扣券"];
                             alertView.completion = ^(BOOL cancelled, NSInteger index){
                                 scanner.viewController.uiLabel.text = @"初始化";
                                 scanner.resText = @"";
@@ -429,7 +429,7 @@
 }
 
 - (AlertView*)showAlertDialog:(NSString*)message {
-    AlertView *alertView = [[AlertView alloc] initWithTitle:@"验证优惠券" message:message cancelButtonTitle:@"确定" otherButtonTitles:nil];
+    AlertView *alertView = [[AlertView alloc] initWithTitle:@"验证抵扣券" message:message cancelButtonTitle:@"确定" otherButtonTitles:nil];
     return alertView;
 }
 

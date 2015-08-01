@@ -97,7 +97,7 @@ public class CouponRequest {
     }
 
     private String getFailureMessage(RetrofitError retrofitError){
-        String message = "获取优惠券失败";
+        String message = "获取抵扣券失败";
         switch (retrofitError.getKind()){
             case NETWORK:
                 message = "请检查网络链接";
@@ -105,7 +105,7 @@ public class CouponRequest {
             case HTTP:
                 int status = retrofitError.getResponse().getStatus();
                 if(status == 404){
-                    message = "该优惠券非本停车场优惠券";
+                    message = "该抵扣券非本停车场抵扣券";
                 }else{
                     message = "发生错误:" + status;
                 }
