@@ -259,7 +259,8 @@
     CDVbcsProcessor* processor;
     NSString*       callback;
     NSString*       capabilityError;
-    
+}
+
 //--------------------------------------------------------------------------
 - (void)returnSuccess:(NSString*)scannedText scanner:(CDVbcsProcessor*)scanner host:(NSString *)host parkinglotId:(NSString *)parkinglotId format:(NSString *)format cancelled:(BOOL)cancelled flipped:(BOOL)flipped callback:(NSString *)callback{
     if (!cancelled){
@@ -570,14 +571,15 @@ parentViewController:(UIViewController*)parentViewController
 - (void)barcodeScanSucceeded:(NSString*)text format:(NSString*)format {
     dispatch_sync(dispatch_get_main_queue(), ^{
     	if(self.isDecode){
+            AudioServicesPlaySystemSound(_soundFileObject);
         	[self barcodeScanDone];
     	}
     	if (![self.resText isEqualToString:text]) {
+            AudioServicesPlaySystemSound(_soundFileObject);
         	self.resText = text;
         	[self.plugin returnSuccess:text scanner:self host:self.host parkinglotId:self.parkinglotId format:format cancelled:FALSE flipped:FALSE callback:self.callback];
     	}
-        [self barcodeScanDone];
-        AudioServicesPlaySystemSound(_soundFileObject);
+        
     });
 }
 
