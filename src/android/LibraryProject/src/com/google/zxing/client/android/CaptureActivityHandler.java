@@ -17,6 +17,7 @@
 package com.google.zxing.client.android;
 
 import android.content.ActivityNotFoundException;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.provider.Browser;
@@ -32,9 +33,21 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.util.Log;
-import com.google.zxing.FakeR;
+import android.widget.Toast;
 
+import com.google.zxing.FakeR;
+import com.mobishift.http.CouponRequest;
+import com.phonegap.plugins.barcodescanner.BarcodeScanner;
+
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Collection;
+import java.util.Date;
+
+import retrofit.Callback;
+import retrofit.RetrofitError;
+import retrofit.client.Response;
 
 /**
  * This class handles all the messaging which comprises the state machine for capture.
@@ -44,11 +57,11 @@ import java.util.Collection;
 public final class CaptureActivityHandler extends Handler {
 
   private static final String TAG = CaptureActivityHandler.class.getSimpleName();
-
   private final CaptureActivity activity;
   private final DecodeThread decodeThread;
   private State state;
   private final CameraManager cameraManager;
+  private String handleText = "";
 
   private enum State {
     PREVIEW,
@@ -62,7 +75,7 @@ public final class CaptureActivityHandler extends Handler {
                          Collection<BarcodeFormat> decodeFormats,
                          String characterSet,
                          CameraManager cameraManager) {
-	fakeR = new FakeR(activity);
+  fakeR = new FakeR(activity);
     this.activity = activity;
     decodeThread = new DecodeThread(activity, decodeFormats, characterSet,
         new ViewfinderResultPointCallback(activity.getViewfinderView()));
@@ -93,8 +106,69 @@ public final class CaptureActivityHandler extends Handler {
         cameraManager.requestPreviewFrame(decodeThread.getHandler(), fakeR.getId("id", "decode"));
     } else if (message.what == fakeR.getId("id", "return_scan_result")) {
         Log.d(TAG, "Got return scan result message");
-        activity.setResult(Activity.RESULT_OK, (Intent) message.obj);
-        activity.finish();
+//        activity.setResult(Activity.RESULT_OK, (Intent) message.obj);
+        Intent intent = (Intent) message.obj;
+        final String url = intent.getStringExtra("SCAN_RESULT");
+        final DialogInterface.OnDismissListener dismissListener = new DialogInterface.OnDismissListener() {
+            @Override
+            public void onDismiss(DialogInterface dialog) {
+                activity.setCouponText("初始化");
+                restartPreviewAndDecode();
+            }
+        };
+        if(activity.getRequestCode() == BarcodeScanner.DECODE_CODE){
+            Log.d(TAG, "Got return scan result message");
+            activity.setResult(Activity.RESULT_OK, (Intent) message.obj);
+            activity.finish();
+        }else if(activity.getRequestCode() == BarcodeScanner.REQUEST_CODE){
+            activity.setCouponText("请求中...");
+            final CouponRequest couponRequest = CouponRequest.getCouponRequest();
+            boolean isCoupon = couponRequest.get(url, new CouponRequest.CouponReqeustCallback() {
+                @Override
+                public void success(CouponRequest.Coupon coupon) {
+                    activity.showCouponDialog(coupon.parkinglot_coupon_name,
+                            coupon.check,
+                            coupon.getUsedAt(),
+                            coupon.origin_price,
+                            coupon.parkinglot_coupon_desc,
+                            new DialogInterface.OnClickListener() {
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {
+                                    dialog.dismiss();
+                                    couponRequest.checkCode(url, new CouponRequest.CouponReqeustCallback() {
+                                        @Override
+                                        public void success(CouponRequest.Coupon coupon) {
+                                            activity.setCouponView(coupon.parkinglot_coupon_name,
+                                                    coupon.check,
+                                                    coupon.getUsedAt(),
+                                                    coupon.origin_price);
+                                            restartPreviewAndDecode();
+                                        }
+
+                                        @Override
+                                        public void failure(String message) {
+                                            Toast.makeText(activity, message, Toast.LENGTH_SHORT).show();
+                                            activity.setCouponText(message);
+                                            restartPreviewAndDecode();
+                                        }
+                                    });
+                                }
+                            },
+                            dismissListener);
+                }
+
+                @Override
+                public void failure(String message) {
+                    activity.showDialog(message, dismissListener);
+                }
+            });
+            if(!isCoupon){
+                activity.showDialog("二维码不可用", dismissListener);
+            }
+        }else{
+            restartPreviewAndDecode();
+        }
+//        activity.finish();
     } else if (message.what == fakeR.getId("id", "launch_product_query")) {
         Log.d(TAG, "Got product query message");
         String url = (String) message.obj;
@@ -145,6 +219,7 @@ public final class CaptureActivityHandler extends Handler {
       cameraManager.requestPreviewFrame(decodeThread.getHandler(), fakeR.getId("id", "decode"));
       activity.drawViewfinder();
     }
+
   }
 
 }

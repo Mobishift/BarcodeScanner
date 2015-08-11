@@ -117,9 +117,11 @@ final class CameraConfigurationManager {
     if (focusMode != null) {
       parameters.setFocusMode(focusMode);
     }
-
+    parameters.set("orientation", "portrait");
+    parameters.set("rotation", 90);
     parameters.setPreviewSize(cameraResolution.x, cameraResolution.y);
     camera.setParameters(parameters);
+    camera.setDisplayOrientation(90);
   }
 
   Point getCameraResolution() {

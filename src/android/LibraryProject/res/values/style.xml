@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="mbsAlertDialog" parent="@android:style/Theme.Holo.Light.Dialog">
+        <item name="android:textColor" >#000</item>
+    </style>
+</resources>

@@ -32,6 +32,8 @@ import com.google.zxing.client.android.share.ShareActivity;
 
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Dialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageInfo;
@@ -39,6 +41,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.net.Uri;
 import android.os.Bundle;
@@ -48,6 +51,7 @@ import android.preference.PreferenceManager;
 import android.text.ClipboardManager;
 import android.util.Log;
 import android.util.TypedValue;
+import android.view.ContextThemeWrapper;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -58,15 +62,19 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.Window;
 import android.view.WindowManager;
+import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
 import android.widget.Toast;
 import com.google.zxing.FakeR;
+import com.phonegap.plugins.barcodescanner.BarcodeScanner;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.text.DateFormat;
+import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Collection;
 import java.util.Date;
 import java.util.EnumSet;
@@ -110,6 +118,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
   private Result savedResultToShow;
   private ViewfinderView viewfinderView;
   private TextView statusView;
+  private TextView couponView;
   private View resultView;
   private Result lastResult;
   private boolean hasSurface;
@@ -123,6 +132,11 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
   private HistoryManager historyManager;
   private InactivityTimer inactivityTimer;
   private BeepManager beepManager;
+  private int requestCode;
+
+  public int getRequestCode() {
+      return requestCode;
+  }
 
   ViewfinderView getViewfinderView() {
     return viewfinderView;
@@ -140,7 +154,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
   public void onCreate(Bundle icicle) {
     super.onCreate(icicle);
 
-	fakeR = new FakeR(this);
+  fakeR = new FakeR(this);
 
     Window window = getWindow();
     window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
@@ -151,9 +165,8 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     historyManager.trimHistory();
     inactivityTimer = new InactivityTimer(this);
     beepManager = new BeepManager(this);
-
+    requestCode = this.getIntent().getIntExtra("requestCode", BarcodeScanner.REQUEST_CODE);
     PreferenceManager.setDefaultValues(this, fakeR.getId("xml", "preferences"), false);
-
     //showHelpOnFirstLaunch();
   }
 
@@ -172,6 +185,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
 
     resultView = findViewById(fakeR.getId("id", "result_view"));
     statusView = (TextView) findViewById(fakeR.getId("id", "status_view"));
+    couponView = (TextView) findViewById(fakeR.getId("id", "coupon_view"));
 
     handler = null;
     lastResult = null;
@@ -282,6 +296,143 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
       surfaceHolder.removeCallback(this);
     }
     super.onPause();
+  }
+
+  public void setCouponView(String title, boolean check, Date usedAt, double originPrice){
+//      SimpleDateFormat simpleDateFormat = new SimpleDateFormat("yyyy年M月d日 HH:mm");
+      StringBuilder stringBuilder = new StringBuilder();
+      if(title != null){
+          stringBuilder.append(title + "\n");
+      }
+      if(!check){
+          if(usedAt != null){
+              stringBuilder.append("该抵扣券已被使用\n");
+          }else{
+              stringBuilder.append("该抵扣券已过期\n");
+          }
+
+      }
+      stringBuilder.append("抵扣券价值：" + originPrice + "\n");
+      if(usedAt != null){
+          stringBuilder.append("使用时间：" + getDurationString(usedAt));
+      }
+      couponView.setText(stringBuilder.toString());
+  }
+
+  public void setCouponText(String text){
+      couponView.setText(text);
+  }
+
+  public void showCouponDialog(String title,
+                               boolean check,
+                               Date usedAt,
+                               double originPrice,
+                               String desc,
+                               DialogInterface.OnClickListener okListener,
+                               DialogInterface.OnDismissListener disminssListener){
+    StringBuilder stringBuilder = new StringBuilder();
+    if(title != null){
+      stringBuilder.append(title + "\n");
+    }
+    if(!check){
+      if(usedAt != null){
+        stringBuilder.append("该抵扣券已被使用\n");
+      }else{
+        this.showDialog("该抵扣券已过期", disminssListener);
+        return;
+      }
+
+    }
+    stringBuilder.append("抵扣券价值：" + originPrice + "\n");
+    if(usedAt != null && !check){
+      stringBuilder.append("使用时间：" + getDurationString(usedAt));
+    }
+    if(desc != null && desc.length() > 0){
+      stringBuilder.append("\n" + desc);
+    }
+    ContextThemeWrapper wrapper = new ContextThemeWrapper(this, fakeR.getId("style", "mbsAlertDialog"));
+    AlertDialog.Builder builder = new AlertDialog.Builder(wrapper);
+    builder.setTitle("抵扣券");
+    builder.setMessage(stringBuilder.toString());
+    DialogInterface.OnClickListener cancelListener = new DialogInterface.OnClickListener() {
+      @Override
+      public void onClick(DialogInterface dialog, int which) {
+        dialog.dismiss();
+      }
+    };
+    builder.setOnDismissListener(disminssListener);
+    if(!check){
+      builder.setPositiveButton("确定", cancelListener);
+    }else{
+      builder.setPositiveButton("使用", okListener);
+      builder.setNegativeButton("取消", cancelListener);
+    }
+
+    AlertDialog dialog = builder.create();
+    dialog.show();
+    Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+    positiveButton.setBackgroundColor(Color.rgb(0xFF, 0x58, 0x4e));
+    positiveButton.setTextColor(Color.WHITE);
+    int titleDividerId = this.getResources().getIdentifier("titleDivider", "id", "android");
+
+    View titleDivider = dialog.findViewById(titleDividerId);
+//    titleDivider.setLayoutParams(new ViewGroup.LayoutParams(100, 1));
+    titleDivider.setBackgroundColor(Color.rgb(0xcc, 0xcc, 0xcc));
+  }
+
+  public void showDialog(String message, DialogInterface.OnDismissListener disminssListener){
+    ContextThemeWrapper wrapper = new ContextThemeWrapper(this, fakeR.getId("style", "mbsAlertDialog"));
+//    ContextThemeWrapper wrapper = new ContextThemeWrapper(this, android.R.style.Theme_Holo_Light_Dialog);
+    AlertDialog.Builder builder = new AlertDialog.Builder(wrapper);
+    builder.setTitle("验证抵扣券");
+    builder.setMessage(message);
+    DialogInterface.OnClickListener cancelListener = new DialogInterface.OnClickListener() {
+      @Override
+      public void onClick(DialogInterface dialog, int which) {
+        dialog.dismiss();
+      }
+    };
+    builder.setOnDismissListener(disminssListener);
+    builder.setPositiveButton("确定", cancelListener);
+    AlertDialog dialog =  builder.create();
+
+    dialog.show();
+    Button positiveButton = dialog.getButton(DialogInterface.BUTTON_POSITIVE);
+    positiveButton.setBackgroundColor(Color.rgb(0xFF, 0x58, 0x4e));
+    positiveButton.setTextColor(Color.WHITE);
+    int titleDividerId = this.getResources().getIdentifier("titleDivider", "id", "android");
+
+    View titleDivider = dialog.findViewById(titleDividerId);
+//    titleDivider.setLayoutParams(new ViewGroup.LayoutParams(100, 1));
+    titleDivider.setBackgroundColor(Color.rgb(0xcc, 0xcc, 0xcc));
+
+  }
+
+  private String getDurationString(Date date){
+      Date dateNow = Calendar.getInstance().getTime();
+      long duration = dateNow.getTime() - date.getTime();
+      long second = duration / 1000;
+      if(second < 5){
+          return "现在";
+      }
+      if(second < 60){
+          return second + "秒前";
+      }
+      long minutes = second / 60;
+      if(minutes < 60) {
+          return minutes + "分钟前";
+      }
+      long hour = minutes / 60;
+      if(hour < 24){
+          return hour + "小时前";
+      }
+      long day = hour / 24;
+      hour = hour - day * 24;
+      if(hour > 0){
+          return day + "天" + hour + "小时前";
+      }else{
+          return day + "天前";
+      }
   }
 
   @Override
@@ -583,7 +734,7 @@ public final class CaptureActivity extends Activity implements SurfaceHolder.Cal
     // barcode was found (e.g. contact info) rather than the full contents, which they won't
     // have time to read.
     if (resultDurationMS > 0) {
-      statusView.setText(getString(resultHandler.getDisplayTitle()));
+//      statusView.setText(getString(resultHandler.getDisplayTitle()));
     }
 
     if (copyToClipboard && !resultHandler.areContentsSecure()) {

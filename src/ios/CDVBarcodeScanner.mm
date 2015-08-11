@@ -18,6 +18,8 @@
 #import "zxing-all-in-one.h"
 #import <Cordova/CDVPlugin.h>
 
+#import "TextResponseSerializer.h"
+#import "HttpManager.h"
 
 //------------------------------------------------------------------------------
 // Delegate to handle orientation functions
@@ -27,6 +29,38 @@
 - (NSUInteger)supportedInterfaceOrientations;
 - (BOOL)shouldAutorotateToInterfaceOrientation:(UIInterfaceOrientation)interfaceOrientation;
 - (BOOL)shouldAutorotate;
+
+@end
+
+@interface AlertView: UIAlertView<UIAlertViewDelegate>
+@property (copy, nonatomic) void (^completion)(BOOL, NSInteger);
+
+- (id)initWithTitle:(NSString *)title message:(NSString *)message cancelButtonTitle:(NSString *)cancelButtonTitle otherButtonTitles:(NSArray *)otherButtonTitles;
+
+@end
+
+@implementation AlertView
+    
+- (id)initWithTitle:(NSString *)title message:(NSString *)message cancelButtonTitle:(NSString *)cancelButtonTitle otherButtonTitles:(NSArray *)otherButtonTitles {
+    
+    self = [self initWithTitle:title message:message delegate:self cancelButtonTitle:cancelButtonTitle otherButtonTitles:nil];
+    
+    if (self) {
+        for (NSString *buttonTitle in otherButtonTitles) {
+            [self addButtonWithTitle:buttonTitle];
+        }
+    }
+    return self;
+}
+
+- (void)alertView:(UIAlertView *)alertView didDismissWithButtonIndex:(NSInteger)buttonIndex {
+    
+    if (self.completion) {
+        self.completion(buttonIndex==self.cancelButtonIndex, buttonIndex);
+        self.completion = nil;
+    }
+}
+
 
 @end
 
@@ -44,11 +78,14 @@
 // plugin class
 //------------------------------------------------------------------------------
 @interface CDVBarcodeScanner : CDVPlugin {}
+@property (nonatomic, retain) NSString*                 action;
+
 - (NSString*)isScanNotPossible;
 - (void)scan:(CDVInvokedUrlCommand*)command;
 - (void)encode:(CDVInvokedUrlCommand*)command;
 - (void)returnImage:(NSString*)filePath format:(NSString*)format callback:(NSString*)callback;
-- (void)returnSuccess:(NSString*)scannedText format:(NSString*)format cancelled:(BOOL)cancelled flipped:(BOOL)flipped callback:(NSString*)callback;
+- (void)decode: (CDVInvokedUrlCommand*)command;
+- (void)returnSuccess:(NSString*)scannedText scanner:(CDVbcsProcessor*)scanner host:(NSString*)host parkinglotId:(NSString*)parkinglotId format:(NSString*)format cancelled:(BOOL)cancelled flipped:(BOOL)flipped callback:(NSString*)callback;
 - (void)returnError:(NSString*)message callback:(NSString*)callback;
 @end
 
@@ -66,11 +103,15 @@
 @property (nonatomic)         BOOL                        is1D;
 @property (nonatomic)         BOOL                        is2D;
 @property (nonatomic)         BOOL                        capturing;
+@property (nonatomic, retain) NSString*                   resText;
+@property (nonatomic, retain) NSString*                   host;
+@property (nonatomic, retain) NSString*                   parkinglotId;
 @property (nonatomic)         BOOL                        isFrontCamera;
 @property (nonatomic)         BOOL                        isFlipped;
+@property (nonatomic)         BOOL                        isDecode;
 
 
-- (id)initWithPlugin:(CDVBarcodeScanner*)plugin callback:(NSString*)callback parentViewController:(UIViewController*)parentViewController alterateOverlayXib:(NSString *)alternateXib;
+- (id)initWithPlugin:(CDVBarcodeScanner*)plugin callback:(NSString*)callback host:(NSString*)host parkinglotId:(NSString*)parkinglotId parentViewController:(UIViewController*)parentViewController alterateOverlayXib:(NSString *)alternateXib;
 - (void)scanBarcode;
 - (void)barcodeScanSucceeded:(NSString*)text format:(NSString*)format;
 - (void)barcodeScanFailed:(NSString*)message;
@@ -108,6 +149,7 @@
 @property (nonatomic, retain) IBOutlet UIView* overlayView;
 // unsafe_unretained is equivalent to assign - used to prevent retain cycles in the property below
 @property (nonatomic, unsafe_unretained) id orientationDelegate;
+@property (nonatomic, retain) UILabel* uiLabel;
 
 - (id)initWithProcessor:(CDVbcsProcessor*)processor alternateOverlay:(NSString *)alternateXib;
 - (void)startCapturing;
@@ -122,6 +164,7 @@
 // plugin class
 //------------------------------------------------------------------------------
 @implementation CDVBarcodeScanner
+@synthesize action              = _action;
 
 //--------------------------------------------------------------------------
 - (NSString*)isScanNotPossible {
@@ -141,14 +184,19 @@
     NSString*       callback;
     NSString*       capabilityError;
     
+    NSMutableDictionary* options = [command.arguments objectAtIndex:0];
+    NSString* host = [options objectForKey:@"host"];
+    NSString* parkinglotId = [options objectForKey:@"parkinglotId"];
+    self.action = @"scan";
+    
     callback = command.callbackId;
     
     // We allow the user to define an alternate xib file for loading the overlay.
     NSString *overlayXib = nil;
-    if ( [command.arguments count] >= 1 )
-    {
-        overlayXib = [command.arguments objectAtIndex:0];
-    }
+//    if ( [command.arguments count] >= 1 )
+//    {
+//        overlayXib = [command.arguments objectAtIndex:0];
+//    }
     
     capabilityError = [self isScanNotPossible];
     if (capabilityError) {
@@ -159,8 +207,11 @@
     processor = [[CDVbcsProcessor alloc]
                  initWithPlugin:self
                  callback:callback
+                 host:host
+                 parkinglotId:parkinglotId
                  parentViewController:self.viewController
                  alterateOverlayXib:overlayXib
+                 isDecode:false
                  ];
     [processor retain];
     [processor retain];
@@ -204,20 +255,192 @@
     [[self commandDelegate] sendPluginResult:result callbackId:callback];
 }
 
+-(void)decode:(CDVInvokedUrlCommand *)command{
+    CDVbcsProcessor* processor;
+    NSString*       callback;
+    NSString*       capabilityError;
+    
 //--------------------------------------------------------------------------
-- (void)returnSuccess:(NSString*)scannedText format:(NSString*)format cancelled:(BOOL)cancelled flipped:(BOOL)flipped callback:(NSString*)callback{
-    NSNumber* cancelledNumber = [NSNumber numberWithInt:(cancelled?1:0)];
-    
-    NSMutableDictionary* resultDict = [[NSMutableDictionary alloc] init];
-    [resultDict setObject:scannedText     forKey:@"text"];
-    [resultDict setObject:format          forKey:@"format"];
-    [resultDict setObject:cancelledNumber forKey:@"cancelled"];
-    
-    CDVPluginResult* result = [CDVPluginResult
-                               resultWithStatus: CDVCommandStatus_OK
-                               messageAsDictionary: resultDict
-                               ];
-    [self.commandDelegate sendPluginResult:result callbackId:callback];
+- (void)returnSuccess:(NSString*)scannedText scanner:(CDVbcsProcessor*)scanner host:(NSString *)host parkinglotId:(NSString *)parkinglotId format:(NSString *)format cancelled:(BOOL)cancelled flipped:(BOOL)flipped callback:(NSString *)callback{
+    if (!cancelled){
+        if([self.action isEqualToString:@"scan"]){
+            NSArray *scannedTextArray = [scannedText componentsSeparatedByString:@"parkinglotcouponuser="];
+            if ([scannedTextArray count] == 2) {
+                NSString *res = [scannedTextArray objectAtIndex: 1];
+                NSArray *resArray = [res componentsSeparatedByString:@"__"];
+                if ([resArray count] == 2) {
+                    NSString *parkinglotcouponuserPk = [resArray objectAtIndex:0];
+                    NSString *code = [resArray objectAtIndex:1];
+                    NSString *url = [NSString stringWithFormat:@"%@/parking/parkinglotcouponusers/%@/parkinglot/%@/code/%@/check?no_use=1", host, parkinglotcouponuserPk, parkinglotId, code];
+                    
+                    scanner.viewController.uiLabel.text = @"请求中...";
+                    HttpManager *manager = [HttpManager sharedClient];
+                    manager.responseSerializer = [AFJSONResponseSerializer serializer];
+                    [manager POST:url parameters:nil success:^(AFHTTPRequestOperation *operation, id responseObject) {
+                        NSMutableDictionary *dictionary = [NSMutableDictionary dictionary];
+                        [dictionary setObject:[NSNumber numberWithInt:operation.response.statusCode] forKey:@"status"];
+                        [dictionary setObject:responseObject forKey:@"data"];
+                        
+                        NSDictionary *dic = (NSDictionary *) responseObject;
+                        NSString *content = @"";
+                        NSDate *date = nil;
+                        if([dic objectForKey:@"parkinglot_coupon_name"]){
+                            content = [content stringByAppendingFormat:@"%@\n", [dic objectForKey:@"parkinglot_coupon_name"]];
+                        }
+                        if(![[dic objectForKey: @"check"] boolValue]){
+                            
+                            if([dic objectForKey: @"used_at"] != [NSNull null]){
+                                content = [content stringByAppendingString: @"该抵扣券已被使用\n"];
+                                NSDateFormatter *dateFormatter = [[NSDateFormatter alloc] init];
+                                [dateFormatter setDateFormat: @"yyyy-MM-dd'T'HH:mm:ss.SSS"];
+                                date = [dateFormatter dateFromString: [dic objectForKey: @"used_at"]];
+                                [dateFormatter release];
+                            }else{
+                                content = [content stringByAppendingString: @"该抵扣券已过期\n"];
+                            }
+                        }else{
+//                            content = [content stringByAppendingString: @"抵扣券有效\n"];
+                            date = [NSDate date];
+                        }
+                        content = [content stringByAppendingFormat: @"抵扣券价格：%@\n", [dic objectForKey:@"origin_price"]];
+                        if(date != nil && ![[dic objectForKey: @"check"] boolValue]){
+                            content = [content stringByAppendingString:@"使用时间："];
+                            long interval = -[date timeIntervalSinceNow];
+                            if(interval < 5){
+                                content = [content stringByAppendingString:@"现在"];
+                            }else if(interval < 60){
+                                content = [content stringByAppendingFormat:@"%ld秒前", interval];
+                            }else{
+                                long minute = interval / 60;
+                                if(minute < 60){
+                                    content = [content stringByAppendingFormat:@"%ld分钟前", minute];
+                                }else{
+                                    long hour = minute / 60;
+                                    if(hour < 24){
+                                        content = [content stringByAppendingFormat:@"%ld小时前", hour];
+                                    }else{
+                                        long day = hour / 24;
+                                        hour = hour - day *24;
+                                        if(hour >0){
+                                            content = [content stringByAppendingFormat:@"%ld天%ld小时前", day, hour];
+                                        }else{
+                                            content = [content stringByAppendingFormat:@"%ld天前", day];
+                                        }
+                                    }
+                                }
+                            }
+                            content = [content stringByAppendingString:@"\n"];
+                        }
+                        
+                        NSString* dialogString = [NSString stringWithString:content];
+                        if([dic objectForKey:@"parkinglot_coupon_desc"] && [[dic objectForKey:@"parkinglot_coupon_desc"] length] > 0){
+                            dialogString = [dialogString stringByAppendingFormat:@"\n%@", [dic objectForKey:@"parkinglot_coupon_desc"]];
+                        }
+                        AlertView* alertView = nil;
+                        if(![[dic objectForKey: @"check"] boolValue]){
+                            alertView = [[AlertView alloc] initWithTitle:@"抵扣券" message:dialogString cancelButtonTitle:@"取消" otherButtonTitles:nil];
+                            alertView.completion = ^(BOOL cancelled, NSInteger index){
+                                scanner.viewController.uiLabel.text = @"初始化";
+                                scanner.resText = @"";
+                            };
+                        }else{
+                            alertView = [[AlertView alloc] initWithTitle:@"抵扣券" message:dialogString cancelButtonTitle:@"取消" otherButtonTitles:@[@"使用"]];
+                            alertView.completion = ^(BOOL cancelled, NSInteger buttonIndex){
+                                if(!cancelled){
+                                    NSString* url = [NSString stringWithFormat:@"%@/parking/parkinglotcouponusers/%@/parkinglot/%@/code/%@/check", host, parkinglotcouponuserPk, parkinglotId, code];
+                                    HttpManager *manager = [HttpManager sharedClient];
+                                    manager.responseSerializer = [AFJSONResponseSerializer serializer];
+                                    [manager POST:url parameters:nil success:^(AFHTTPRequestOperation *operation, id responseObject) {
+                                        scanner.viewController.uiLabel.text = content;
+                                        scanner.resText = @"";
+                                    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+                                        if(operation.response != nil && operation.response.statusCode == 404){
+                                            AlertView *alertView = [self showAlertDialog:@"该抵扣券非本停车场抵扣券"];
+                                            alertView.completion = ^(BOOL cancelled, NSInteger index){
+                                                scanner.viewController.uiLabel.text = @"初始化";
+                                                scanner.resText = @"";
+                                            };
+                                            [alertView show];
+                                        }else{
+                                            NSString *string = @"发生错误：";
+                                            string = [string stringByAppendingFormat: @"%ld，请重新打开扫码", (long)error.code];
+                                            
+                                            scanner.viewController.uiLabel.text = string;
+                                        }
+                                        scanner.resText = @"";
+                                    }];
+                                }else{
+                                    scanner.viewController.uiLabel.text = @"初始化";
+                                    scanner.resText = @"";
+                                }
+                            };
+                        }
+                        
+                        [alertView show];
+
+//                        scanner.viewController.uiLabel.text = content;
+                        
+                    } failure:^(AFHTTPRequestOperation *operation, NSError *error) {
+                        if(operation.response != nil && operation.response.statusCode == 404){
+                            AlertView *alertView = [self showAlertDialog:@"该抵扣券非本停车场抵扣券"];
+                            alertView.completion = ^(BOOL cancelled, NSInteger index){
+                                scanner.viewController.uiLabel.text = @"初始化";
+                                scanner.resText = @"";
+                            };
+
+                        }else{
+                            NSString *string = @"发生错误：";
+                            string = [string stringByAppendingFormat: @"%ld，请重新打开扫码", (long)error.code];
+                            
+                            scanner.viewController.uiLabel.text = string;
+                        }
+                        scanner.resText = @"";
+                    }];
+                }else{
+                    AlertView *alertView = [self showAlertDialog:@"二维码不可用"];
+                    alertView.completion = ^(BOOL cancelled, NSInteger index){
+                        scanner.viewController.uiLabel.text = @"初始化";
+                        scanner.resText = @"";
+                    };
+
+                    [alertView show];
+                }
+            }else{
+                AlertView *alertView = [self showAlertDialog:@"二维码不可用"];
+                alertView.completion = ^(BOOL cancelled, NSInteger index){
+                    scanner.viewController.uiLabel.text = @"初始化";
+                    scanner.resText = @"";
+                };
+                [alertView show];
+            }
+
+        }else if([self.action isEqualToString:@"decode"]){
+            NSNumber* cancelledNumber = [NSNumber numberWithInt:(cancelled?1:0)];
+            
+            NSMutableDictionary* resultDict = [[NSMutableDictionary alloc] init];
+            [resultDict setObject:scannedText     forKey:@"text"];
+            [resultDict setObject:format          forKey:@"format"];
+            [resultDict setObject:cancelledNumber forKey:@"cancelled"];
+            
+            CDVPluginResult* result = [CDVPluginResult
+                                       resultWithStatus: CDVCommandStatus_OK
+                                       messageAsDictionary: resultDict
+                                       ];
+            [self.commandDelegate sendPluginResult:result callbackId:callback];
+        }
+    }else{
+        CDVPluginResult* result = [CDVPluginResult
+                                   resultWithStatus: CDVCommandStatus_ERROR
+                                   messageAsDictionary: nil
+                                   ];
+        [self.commandDelegate sendPluginResult:result callbackId:callback];
+
+    }
+}
+
+- (AlertView*)showAlertDialog:(NSString*)message {
+    AlertView *alertView = [[AlertView alloc] initWithTitle:@"验证抵扣券" message:message cancelButtonTitle:@"确定" otherButtonTitles:nil];
+    return alertView;
 }
 
 //--------------------------------------------------------------------------
@@ -247,25 +470,36 @@
 @synthesize is1D                 = _is1D;
 @synthesize is2D                 = _is2D;
 @synthesize capturing            = _capturing;
+@synthesize resText              = _resText;
+@synthesize host                 = _host;
+@synthesize parkinglotId         = _parkinglotId;
+@synthesize isDecode             = _isDecode;
 
 SystemSoundID _soundFileObject;
 
 //--------------------------------------------------------------------------
 - (id)initWithPlugin:(CDVBarcodeScanner*)plugin
             callback:(NSString*)callback
+                host:(NSString*)host
+        parkinglotId:(NSString*)parkinglotId
 parentViewController:(UIViewController*)parentViewController
-  alterateOverlayXib:(NSString *)alternateXib {
+  alterateOverlayXib:(NSString *)alternateXib
+            isDecode:(BOOL)isDecode{
     self = [super init];
     if (!self) return self;
     
     self.plugin               = plugin;
     self.callback             = callback;
+    self.host                 = host;
+    self.parkinglotId         = parkinglotId;
     self.parentViewController = parentViewController;
     self.alternateXib         = alternateXib;
+    self.isDecode             = isDecode;
     
     self.is1D      = YES;
     self.is2D      = YES;
     self.capturing = NO;
+    self.resText = @"";
     
     CFURLRef soundFileURLRef  = CFBundleCopyResourceURL(CFBundleGetMainBundle(), CFSTR("CDVBarcodeScanner.bundle/beep"), CFSTR ("caf"), NULL);
     AudioServicesCreateSystemSoundID(soundFileURLRef, &_soundFileObject);
@@ -277,6 +511,8 @@ parentViewController:(UIViewController*)parentViewController
 - (void)dealloc {
     self.plugin = nil;
     self.callback = nil;
+    self.host = nil;
+    self.parkinglotId = nil;
     self.parentViewController = nil;
     self.viewController = nil;
     self.captureSession = nil;
@@ -284,6 +520,7 @@ parentViewController:(UIViewController*)parentViewController
     self.alternateXib = nil;
     
     self.capturing = NO;
+    self.resText = @"";
     
     AudioServicesRemoveSystemSoundCompletion(_soundFileObject);
     AudioServicesDisposeSystemSoundID(_soundFileObject);
@@ -332,9 +569,15 @@ parentViewController:(UIViewController*)parentViewController
 //--------------------------------------------------------------------------
 - (void)barcodeScanSucceeded:(NSString*)text format:(NSString*)format {
     dispatch_sync(dispatch_get_main_queue(), ^{
+    	if(self.isDecode){
+        	[self barcodeScanDone];
+    	}
+    	if (![self.resText isEqualToString:text]) {
+        	self.resText = text;
+        	[self.plugin returnSuccess:text scanner:self host:self.host parkinglotId:self.parkinglotId format:format cancelled:FALSE flipped:FALSE callback:self.callback];
+    	}
         [self barcodeScanDone];
         AudioServicesPlaySystemSound(_soundFileObject);
-        [self.plugin returnSuccess:text format:format cancelled:FALSE flipped:FALSE callback:self.callback];
     });
 }
 
@@ -347,7 +590,7 @@ parentViewController:(UIViewController*)parentViewController
 //--------------------------------------------------------------------------
 - (void)barcodeScanCancelled {
     [self barcodeScanDone];
-    [self.plugin returnSuccess:@"" format:@"" cancelled:TRUE flipped:self.isFlipped callback:self.callback];
+    [self.plugin returnSuccess:@"" scanner:self host:self.host parkinglotId:self.parkinglotId format:@"" cancelled:TRUE flipped:self.isFlipped callback:self.callback];
     if (self.isFlipped) {
         self.isFlipped = NO;
     }
@@ -762,6 +1005,8 @@ parentViewController:(UIViewController*)parentViewController
 @synthesize shutterPressed = _shutterPressed;
 @synthesize alternateXib   = _alternateXib;
 @synthesize overlayView    = _overlayView;
+@synthesize uiLabel        = _uiLabel;
+
 
 //--------------------------------------------------------------------------
 - (id)initWithProcessor:(CDVbcsProcessor*)processor alternateOverlay:(NSString *)alternateXib {
@@ -869,56 +1114,57 @@ parentViewController:(UIViewController*)parentViewController
     overlayView.autoresizesSubviews = YES;
     overlayView.autoresizingMask    = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
     overlayView.opaque              = NO;
-
-    UIToolbar* toolbar = [[UIToolbar alloc] init];
-    toolbar.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin;
-    
-    id cancelButton = [[UIBarButtonItem alloc]
-                       initWithBarButtonSystemItem:UIBarButtonSystemItemCancel
-                       target:(id)self
-                       action:@selector(cancelButtonPressed:)
-                       ];
-    
-    
-    id flexSpace = [[UIBarButtonItem alloc]
-                    initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace
-                    target:nil
-                    action:nil
-                    ];
-    
-    id flipCamera = [[UIBarButtonItem alloc]
-                       initWithBarButtonSystemItem:UIBarButtonSystemItemCamera
-                       target:(id)self
-                       action:@selector(flipCameraButtonPressed:)
-                       ];
-    
-#if USE_SHUTTER
-    id shutterButton = [[UIBarButtonItem alloc]
-                        initWithBarButtonSystemItem:UIBarButtonSystemItemCamera
-                        target:(id)self
-                        action:@selector(shutterButtonPressed)
-                        ];
-    
-    toolbar.items = [NSArray arrayWithObjects:flexSpace,cancelButton,flexSpace, flipCamera ,shutterButton,nil];
-#else
-    toolbar.items = [NSArray arrayWithObjects:flexSpace,cancelButton,flexSpace, flipCamera,nil];
-#endif
-    bounds = overlayView.bounds;
-    
-    [toolbar sizeToFit];
-    CGFloat toolbarHeight  = [toolbar frame].size.height;
+//    
+//    UIToolbar* toolbar = [[[UIToolbar alloc] init] autorelease];
+//    toolbar.autoresizingMask = UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleTopMargin;
+//    
+//    id cancelButton = [[[UIBarButtonItem alloc] autorelease]
+//                       initWithBarButtonSystemItem:UIBarButtonSystemItemCancel
+//                       target:(id)self
+//                       action:@selector(cancelButtonPressed:)
+//                       ];
+//    
+//    
+//    id flexSpace = [[[UIBarButtonItem alloc] autorelease]
+//                    initWithBarButtonSystemItem:UIBarButtonSystemItemFlexibleSpace
+//                    target:nil
+//                    action:nil
+//                    ];
+//    
+//    id flipCamera = [[[UIBarButtonItem alloc] autorelease]
+//                       initWithBarButtonSystemItem:UIBarButtonSystemItemCamera
+//                       target:(id)self
+//                       action:@selector(flipCameraButtonPressed:)
+//                       ];
+//
+//    
+//#if USE_SHUTTER
+//    id shutterButton = [[UIBarButtonItem alloc]
+//                        initWithBarButtonSystemItem:UIBarButtonSystemItemCamera
+//                        target:(id)self
+//                        action:@selector(shutterButtonPressed)
+//                        ];
+//    
+//    toolbar.items = [NSArray arrayWithObjects:flexSpace,cancelButton,flexSpace, flipCamera ,shutterButton,nil];
+//#else
+//    toolbar.items = [NSArray arrayWithObjects:flexSpace,cancelButton,flexSpace, flipCamera,nil];
+//#endif
+//    bounds = overlayView.bounds;
+//    
+//    [toolbar sizeToFit];
+//    CGFloat toolbarHeight  = [toolbar frame].size.height;
     CGFloat rootViewHeight = CGRectGetHeight(bounds);
     CGFloat rootViewWidth  = CGRectGetWidth(bounds);
-    CGRect  rectArea       = CGRectMake(0, rootViewHeight - toolbarHeight, rootViewWidth, toolbarHeight);
-    [toolbar setFrame:rectArea];
+//    CGRect  rectArea       = CGRectMake(0, rootViewHeight - toolbarHeight, rootViewWidth, toolbarHeight);
+//    [toolbar setFrame:rectArea];
     
-    [overlayView addSubview: toolbar];
+//    [overlayView addSubview: toolbar];
     
     UIImage* reticleImage = [self buildReticleImage];
     UIView* reticleView = [[UIImageView alloc] initWithImage: reticleImage];
     CGFloat minAxis = MIN(rootViewHeight, rootViewWidth);
     
-    rectArea = CGRectMake(
+    CGRect rectArea = CGRectMake(
                           0.5 * (rootViewWidth  - minAxis),
                           0.5 * (rootViewHeight - minAxis),
                           minAxis,
@@ -938,14 +1184,32 @@ parentViewController:(UIViewController*)parentViewController
     
     [overlayView addSubview: reticleView];
     
+    self.uiLabel = [[[UILabel alloc] initWithFrame: CGRectMake(30, 80, rootViewWidth - 2 * 30, 120)] autorelease];
+    self.uiLabel.textAlignment = NSTextAlignmentCenter;
+    self.uiLabel.backgroundColor = [UIColor colorWithRed: 0 green: 0 blue: 0 alpha:0.6];
+    self.uiLabel.textColor = [UIColor whiteColor];
+    self.uiLabel.numberOfLines = 0;
+    
+    self.uiLabel.text = @"请将二维码置于取景框内扫描。";
+    
+    [overlayView addSubview: self.uiLabel];
+    
+    UIButton* button = [[[UIButton alloc] initWithFrame: CGRectMake(10, 20, 40, 30)] autorelease];
+    [button setTitle:@"取消" forState:UIControlStateNormal];
+    [button setTitleColor:[UIColor colorWithWhite:255 alpha:255] forState:UIControlStateNormal];
+    button.backgroundColor = [UIColor colorWithRed:0 green:0 blue:0 alpha:0];
+    
+    [button addTarget:(id)self action:@selector(cancelButtonPressed:) forControlEvents:UIControlEventTouchDown];
+    [overlayView addSubview:button];
+    
     return overlayView;
 }
 
 //--------------------------------------------------------------------------
 
 #define RETICLE_SIZE    500.0f
-#define RETICLE_WIDTH    10.0f
-#define RETICLE_OFFSET   60.0f
+#define RETICLE_WIDTH    5.0f
+#define RETICLE_OFFSET   120.0f
 #define RETICLE_ALPHA     0.4f
 
 //-------------------------------------------------------------------------
@@ -957,20 +1221,21 @@ parentViewController:(UIViewController*)parentViewController
     CGContextRef context = UIGraphicsGetCurrentContext();
     
     if (self.processor.is1D) {
-        UIColor* color = [UIColor colorWithRed:1.0 green:0.0 blue:0.0 alpha:RETICLE_ALPHA];
-        CGContextSetStrokeColorWithColor(context, color.CGColor);
-        CGContextSetLineWidth(context, RETICLE_WIDTH);
-        CGContextBeginPath(context);
-        CGFloat lineOffset = RETICLE_OFFSET+(0.5*RETICLE_WIDTH);
-        CGContextMoveToPoint(context, lineOffset, RETICLE_SIZE/2);
-        CGContextAddLineToPoint(context, RETICLE_SIZE-lineOffset, 0.5*RETICLE_SIZE);
-        CGContextStrokePath(context);
+        // UIColor* color = [UIColor colorWithRed:1.0 green:0.0 blue:0.0 alpha:RETICLE_ALPHA];
+        // CGContextSetStrokeColorWithColor(context, color.CGColor);
+        // CGContextSetLineWidth(context, RETICLE_WIDTH);
+        // CGContextBeginPath(context);
+        // CGFloat lineOffset = RETICLE_OFFSET+(0.5*RETICLE_WIDTH);
+        // CGContextMoveToPoint(context, lineOffset, RETICLE_SIZE/2);
+        // CGContextAddLineToPoint(context, RETICLE_SIZE-lineOffset, 0.5*RETICLE_SIZE);
+        // CGContextStrokePath(context);
     }
     
     if (self.processor.is2D) {
-        UIColor* color = [UIColor colorWithRed:0.0 green:1.0 blue:0.0 alpha:RETICLE_ALPHA];
+        UIColor* color = [UIColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:RETICLE_ALPHA];
         CGContextSetStrokeColorWithColor(context, color.CGColor);
         CGContextSetLineWidth(context, RETICLE_WIDTH);
+        
         CGContextStrokeRect(context,
                             CGRectMake(
                                        RETICLE_OFFSET,
