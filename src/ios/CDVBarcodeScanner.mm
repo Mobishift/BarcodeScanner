@@ -625,13 +625,13 @@ parentViewController:(UIViewController*)parentViewController
         }];
     } else {
         device = [AVCaptureDevice defaultDeviceWithMediaType:AVMediaTypeVideo];
-        if (!device) return @"unable to obtain video capture device";
+        if (!device) return @"没有找到拍照设备";
         
     }
     
     
     AVCaptureDeviceInput* input = [AVCaptureDeviceInput deviceInputWithDevice:device error:&error];
-    if (!input) return @"unable to obtain video capture device input";
+    if (!input) return @"请在设置中允许相机";
     
     AVCaptureVideoDataOutput* output = [[AVCaptureVideoDataOutput alloc] init];
     if (!output) return @"unable to obtain video capture output";
